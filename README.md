@@ -1,4 +1,4 @@
-## Please Switch to the Add-Starter-Kit-Code Branch to use this reository. The master branch contains only the FTC SDK.
+## Please Switch to the Add-Starter-Kit-Code Branch to use this repository. The master branch contains only the FTC SDK.
 
 ## NOTICE
 
