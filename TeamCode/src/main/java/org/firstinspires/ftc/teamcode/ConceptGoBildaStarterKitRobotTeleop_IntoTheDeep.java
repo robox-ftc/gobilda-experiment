@@ -377,7 +377,7 @@ public class ConceptGoBildaStarterKitRobotTeleop_IntoTheDeep extends LinearOpMod
              */
             armMotor.setTargetPosition((int) (armPosition + armPositionFudgeFactor));
 
-            ((DcMotorEx) armMotor).setVelocity(2100);
+            ((DcMotorEx) armMotor).setVelocity(1000);
             armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
             /*

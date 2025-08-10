@@ -27,6 +27,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
@@ -124,7 +125,7 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
     final double ARM_SCORE_SPECIMEN = 160 * ARM_TICKS_PER_DEGREE;
     final double ARM_SCORE_SAMPLE_IN_LOW = 160 * ARM_TICKS_PER_DEGREE;
     final double ARM_ATTACH_HANGING_HOOK = 120 * ARM_TICKS_PER_DEGREE;
-    final double ARM_WINCH_ROBOT = 15 * ARM_TICKS_PER_DEGREE;
+    final double ARM_WINCH_ROBOT = 180 * ARM_TICKS_PER_DEGREE;
 
     /*
      * Variables to store the speed the intake servo should be set at to intake, and
@@ -142,8 +143,7 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
     final double WRIST_FOLDED_OUT = 0.5;
 
     /* A number in degrees that the triggers can adjust the arm position by */
-    final double FUDGE_FACTOR = ARM_TICKS_PER_DEGREE;
-
+    final double FUDGE_FACTOR = ARM_TICKS_PER_DEGREE * 180;
     /* Variables that are used to set the arm to a specific position */
     double armPosition = (int) ARM_COLLAPSED_INTO_ROBOT;
     double armPositionFudgeFactor;
@@ -170,8 +170,8 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
          * drive forward.
          * for this robot, we reverse the right motor.
          */
-        leftDrive.setDirection(DcMotor.Direction.FORWARD);
-        rightDrive.setDirection(DcMotor.Direction.REVERSE);
+        leftDrive.setDirection(DcMotor.Direction.REVERSE);
+        rightDrive.setDirection(DcMotor.Direction.FORWARD);
 
         /*
          * Setting zeroPowerBehavior to BRAKE enables a "brake mode". This causes the
@@ -223,8 +223,8 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
              * Set the drive and turn variables to follow the joysticks on the gamepad.
              * the joysticks decrease as you push them up. So reverse the Y axis.
              */
-            forward = -gamepad1.left_stick_y - gamepad1.right_stick_y;
-            rotate = gamepad1.right_stick_x + gamepad1.left_stick_x;
+            forward = (-gamepad1.left_stick_y - gamepad1.right_stick_y) / 2;
+            rotate = (gamepad1.right_stick_x + gamepad1.left_stick_x) / 2;
 
             /*
              * Here we "mix" the input channels together to find the power to apply to each
@@ -244,14 +244,14 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
 
             /* Normalize the values so neither exceed +/- 1.0 */
             max = Math.max(Math.abs(left), Math.abs(right));
-            if (max > 2.0) {
+            if (max > 1.0) {
                 left /= max;
                 right /= max;
             }
 
             /* Set the motor power to the variables we've mixed and normalized */
-            leftDrive.setPower(left / 2);
-            rightDrive.setPower(right / 2);
+            leftDrive.setPower(left);
+            rightDrive.setPower(right);
 
             /*
              * Here we handle the three buttons that have direct control of the intake
@@ -317,6 +317,7 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
 
             else if (gamepad2.y) {
                 /* This is the correct height to score the sample in the LOW BASKET */
+                wrist.setPosition(WRIST_FOLDED_OUT);
                 armPosition = ARM_SCORE_SAMPLE_IN_LOW;
             }
 
@@ -378,7 +379,7 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
 
             armMotor.setTargetPosition((int) (armPosition + armPositionFudgeFactor));
 
-            ((DcMotorEx) armMotor).setVelocity(2000);
+            ((DcMotorEx) armMotor).setVelocity(1000);
             armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
             /*
