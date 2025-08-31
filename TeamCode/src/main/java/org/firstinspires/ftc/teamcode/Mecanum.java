@@ -22,14 +22,20 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.bosch.BHI260IMU;
+import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.ImuOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 /*
@@ -78,6 +84,7 @@ public class Mecanum extends LinearOpMode {
     public DcMotor armMotor = null; // the arm motor
     public CRServo intake = null; // the active intake servo
     public Servo wrist = null; // the wrist servo
+    public IMU imu = null; //
 
     final double MOTOR_SPEED = 0.7;
     final double STRAFE_SPEED = 1.1; // adjust
@@ -198,6 +205,7 @@ public class Mecanum extends LinearOpMode {
         RBDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         armMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
+
         /*
          * This sets the maximum current that the control hub will apply to the arm
          * before throwing a flag
@@ -218,7 +226,6 @@ public class Mecanum extends LinearOpMode {
         /* Define and initialize servos. */
         intake = hardwareMap.get(CRServo.class, "intake");
         wrist = hardwareMap.get(Servo.class, "wrist");
-
         /* Make sure that the intake is off, and the wrist is folded in. */
         intake.setPower(INTAKE_OFF);
         wrist.setPosition(WRIST_FOLDED_IN);
@@ -226,6 +233,20 @@ public class Mecanum extends LinearOpMode {
         /* Send telemetry message to signify robot waiting */
         telemetry.addLine("Robot Ready.");
         telemetry.update();
+        imu = hardwareMap.get(IMU.class, "imu");
+
+// Describe how the Hub is mounted
+        RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+        );
+
+// Create parameters with orientation
+        IMU.Parameters parameters = new IMU.Parameters(orientationOnRobot);
+
+// Initialize IMU
+        imu.initialize(parameters);
+
 
         /* Wait for the game driver to press play */
         waitForStart();
@@ -452,6 +473,7 @@ public class Mecanum extends LinearOpMode {
              */
             telemetry.addData("armTarget: ", armMotor.getTargetPosition());
             telemetry.addData("arm Encoder: ", armMotor.getCurrentPosition());
+            telemetry.addData("heading: ", imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
             telemetry.update();
         }
     }
