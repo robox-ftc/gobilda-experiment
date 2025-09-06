@@ -1,81 +1,23 @@
-/*   MIT License
- *   Copyright (c) [2024] [Base 10 Assets, LLC]
- *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy
- *   of this software and associated documentation files (the "Software"), to deal
- *   in the Software without restriction, including without limitation the rights
- *   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- *   copies of the Software, and to permit persons to whom the Software is
- *   furnished to do so, subject to the following conditions:
-
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
-
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- *   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- *   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- *   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- *   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- *   SOFTWARE.
- */
-
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.bosch.BHI260IMU;
-import com.qualcomm.hardware.bosch.BNO055IMU;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.robotcore.hardware.ImuOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.Servo;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
-
-/*
- * This OpMode is an example driver-controlled (TeleOp) mode for the goBILDA 2024-2025 FTC
- * Into The Deep Starter Robot
- * The code is structured as a LinearOpMode
- *
- * This robot has a two-motor differential-steered (sometimes called tank or skid steer) drivetrain.
- * With a left and right drive motor.
- * The drive on this robot is controlled in an "Arcade" style, with the left stick Y axis
- * controlling the forward movement and the right stick X axis controlling rotation.
- * This allows easy transition to a standard "First Person" control of a
- * mecanum or omnidirectional chassis.
- *
- * The drive wheels are 96mm diameter traction (Rhino) or omni wheels.
- * They are driven by 2x 5203-2402-0019 312RPM Yellow Jacket Planetary Gearmotors.
- *
- * This robot's main scoring mechanism includes an arm powered by a motor, a "wrist" driven
- * by a servo, and an intake driven by a continuous rotation servo.
- *
- * The arm is powered by a 5203-2402-0051 (50.9:1 Yellow Jacket Planetary Gearmotor) with an
- * external 5:1 reduction. This creates a total ~254.47:1 reduction.
- * This OpMode uses the motor's encoder and the RunToPosition method to drive the arm to
- * specific setpoints. These are defined as a number of degrees of rotation away from the arm's
- * starting position.
- *
- * Make super sure that the arm is reset into the robot, and the wrist is folded in before
- * you run start the OpMode. The motor's encoder is "relative" and will move the number of degrees
- * you request it to based on the starting position. So if it starts too high, all the motor
- * setpoints will be wrong.
- *
- * The wrist is powered by a goBILDA Torque Servo (2000-0025-0002).
- *
- * The intake wheels are powered by a goBILDA Speed Servo (2000-0025-0003) in Continuous Rotation mode.
- */
+import java.util.Locale;
 
 @TeleOp(name = "Mecanum Double Controller", group = "Robot")
 // @Disabled
 public class Mecanum extends LinearOpMode {
-
     /* Declare OpMode members. */
     public DcMotor LFDrive = null; // left-front
     public DcMotor RFDrive = null; // right-front
@@ -86,9 +28,10 @@ public class Mecanum extends LinearOpMode {
     public Servo wrist = null; // the wrist servo
     public IMU imu = null; //
 
-    final double MOTOR_SPEED = 0.7;
-    final double STRAFE_SPEED = 1.1; // adjust
-
+    final double MOTOR_SPEED = 1;
+    final double STRAFE_SPEED = 1; // adjust
+    GoBildaPinpointDriver odo;
+    double oldTime = 0;
     /*
      * This constant is the number of encoder ticks for each degree of rotation of
      * the arm.
@@ -112,25 +55,6 @@ public class Mecanum extends LinearOpMode {
             * 100.0 / 20.0 // This is the external gear reduction, a 20T pinion gear that drives a 100T
             // hub-mount gear
             * 1 / 360.0; // we want ticks per degree, not per rotation
-
-    /*
-     * These constants hold the position that the arm is commanded to run to.
-     * These are relative to where the arm was located when you start the OpMode. So
-     * make sure the
-     * arm is reset to collapsed inside the robot before you start the program.
-     *
-     * In these variables you'll see a number in degrees, multiplied by the ticks
-     * per degree of the arm.
-     * This results in the number of encoder ticks the arm needs to move in order to
-     * achieve the ideal
-     * set position of the arm. For example, the ARM_SCORE_SAMPLE_IN_LOW is set to
-     * 160 * ARM_TICKS_PER_DEGREE. This asks the arm to move 160° from the starting
-     * position.
-     * If you'd like it to move further, increase that number. If you'd like it to
-     * not move
-     * as far from the starting position, decrease it.
-     */
-
     final double ARM_COLLAPSED_INTO_ROBOT = 0;
     final double ARM_COLLECT = 250 * ARM_TICKS_PER_DEGREE;
     final double ARM_CLEAR_BARRIER = 230 * ARM_TICKS_PER_DEGREE;
@@ -170,9 +94,9 @@ public class Mecanum extends LinearOpMode {
         double rightFront;
         double leftBack;
         double rightBack;
-//        double forward;
-//        double strafe;
-//        double rotate;
+        // double forward;
+        // double strafe;
+        // double rotate;
         double max;
 
         /* Define and Initialize Motors */
@@ -181,7 +105,7 @@ public class Mecanum extends LinearOpMode {
         LBDrive = hardwareMap.get(DcMotor.class, "bl"); // the left drivetrain motor
         RBDrive = hardwareMap.get(DcMotor.class, "br"); // the right drivetrain motor
         armMotor = hardwareMap.get(DcMotor.class, "arm"); // the arm motor
-
+        odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
         /*
          * Most skid-steer/differential drive robots require reversing one motor to
          * drive forward.
@@ -204,7 +128,6 @@ public class Mecanum extends LinearOpMode {
         LBDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         RBDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         armMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
 
         /*
          * This sets the maximum current that the control hub will apply to the arm
@@ -230,60 +153,97 @@ public class Mecanum extends LinearOpMode {
         intake.setPower(INTAKE_OFF);
         wrist.setPosition(WRIST_FOLDED_IN);
 
+        odo.setOffsets(-84.0, -168.0, DistanceUnit.MM);
+        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD,
+                GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        odo.resetPosAndIMU();
         /* Send telemetry message to signify robot waiting */
         telemetry.addLine("Robot Ready.");
+        telemetry.addData("X offset", odo.getXOffset(DistanceUnit.MM));
+        telemetry.addData("Y offset", odo.getYOffset(DistanceUnit.MM));
+        telemetry.addData("Heading Scalar", odo.getYawScalar());
         telemetry.update();
-        imu = hardwareMap.get(IMU.class, "imu");
 
-// Describe how the Hub is mounted
+        // Describe how the Hub is mounted
         RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
-        );
+                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD);
 
-// Create parameters with orientation
-        IMU.Parameters parameters = new IMU.Parameters(orientationOnRobot);
-
-// Initialize IMU
-        imu.initialize(parameters);
-
-
-        /* Wait for the game driver to press play */
         waitForStart();
 
         /* Run until the driver presses stop */
         while (opModeIsActive()) {
+            odo.update();
 
             /*
-             * Set the drive and turn variables to follow the joysticks on the gamepad.
-             * the joysticks decrease as you push them up. So reverse the Y axis.
+             * Optionally, you can update only the heading of the device. This takes less
+             * time to read, but will not
+             * pull any other data. Only the heading (which you can pull with getHeading()
+             * or in getPosition().
              */
-//            forward = (-gamepad1.left_stick_y - gamepad1.right_stick_y) / 2;
-//            rotate = (-gamepad1.left_stick_y + gamepad1.right_stick_y) / 2;
-//            strafe = (gamepad1.right_stick_x + gamepad1.left_stick_x) / 2;
+            // odo.update(GoBildaPinpointDriver.ReadData.ONLY_UPDATE_HEADING);
+
+            if (gamepad1.a) {
+                odo.resetPosAndIMU(); // resets the position to 0 and recalibrates the IMU
+            }
+
+            if (gamepad1.b) {
+                odo.recalibrateIMU(); // recalibrates the IMU without resetting position
+            }
 
             /*
-             * Here we "mix" the input channels together to find the power to apply to each
-             * motor.
-             * The both motors need to be set to a mix of how much you're retesting the
-             * robot move
-             * forward, and how much you're requesting the robot turn. When you ask the
-             * robot to rotate
-             * the right and left motors need to move in opposite directions. So we will add
-             * rotate to
-             * forward for the left motor, and subtract rotate from forward for the right
-             * motor.
+             * This code prints the loop frequency of the REV Control Hub. This frequency is
+             * effected
+             * by I²C reads/writes. So it's good to keep an eye on. This code calculates the
+             * amount
+             * of time each cycle takes and finds the frequency (number of updates per
+             * second) from
+             * that cycle time.
+             */
+            double newTime = getRuntime();
+            double loopTime = newTime - oldTime;
+            double frequency = 1 / loopTime;
+            oldTime = newTime;
+
+            /*
+             * gets the current Position (x & y in mm, and heading in degrees) of the robot,
+             * and prints it.
+             */
+            Pose2D pos = odo.getPosition();
+            String data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM),
+                    pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
+
+            /*
+             * gets the current Velocity (x & y in mm/sec and heading in degrees/sec) and
+             * prints it.
+             */
+            String velocity = String.format(Locale.US, "{XVel: %.3f, YVel: %.3f, HVel: %.3f}",
+                    odo.getVelX(DistanceUnit.MM), odo.getVelY(DistanceUnit.MM),
+                    odo.getHeadingVelocity(UnnormalizedAngleUnit.DEGREES));
+
+            /*
+             * Gets the Pinpoint device status. Pinpoint can reflect a few states. But we'll
+             * primarily see
+             * READY: the device is working as normal
+             * CALIBRATING: the device is calibrating and outputs are put on hold
+             * NOT_READY: the device is resetting from scratch. This should only happen
+             * after a power-cycle
+             * FAULT_NO_PODS_DETECTED - the device does not detect any pods plugged in
+             * FAULT_X_POD_NOT_DETECTED - The device does not detect an X pod plugged in
+             * FAULT_Y_POD_NOT_DETECTED - The device does not detect a Y pod plugged in
+             * FAULT_BAD_READ - The firmware detected a bad I²C read, if a bad read is
+             * detected, the device status is updated and the previous position is reported
              */
 
-//            left = forward + rotate;
-//            right = forward - rotate;
-            leftFront = gamepad1.left_stick_y - gamepad1.left_stick_x * STRAFE_SPEED;
-            rightFront = gamepad1.right_stick_y + gamepad1.right_stick_x * STRAFE_SPEED;
-            leftBack = gamepad1.left_stick_y + gamepad1.left_stick_x * STRAFE_SPEED;
-            rightBack = gamepad1.right_stick_y - gamepad1.right_stick_x * STRAFE_SPEED;
+            leftFront = (gamepad1.left_stick_y - gamepad1.left_stick_x) * STRAFE_SPEED;
+            rightFront = (gamepad1.right_stick_y + gamepad1.right_stick_x) * STRAFE_SPEED;
+            leftBack = (gamepad1.left_stick_y + gamepad1.left_stick_x) * STRAFE_SPEED;
+            rightBack = (gamepad1.right_stick_y - gamepad1.right_stick_x) * STRAFE_SPEED;
 
             /* Normalize the values so neither exceed +/- 1.0 */
-            max = Math.max(Math.max(Math.abs(leftFront), Math.abs(rightFront)), Math.max(Math.abs(leftBack), Math.abs(rightBack)));
+            max = Math.max(Math.max(Math.abs(leftFront), Math.abs(rightFront)),
+                    Math.max(Math.abs(leftBack), Math.abs(rightBack)));
             if (max > 1.0) {
                 leftFront /= max;
                 rightFront /= max;
@@ -425,44 +385,6 @@ public class Mecanum extends LinearOpMode {
 
             ((DcMotorEx) armMotor).setVelocity(1000);
             armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-            /*
-             * TECH TIP: Encoders, integers, and doubles
-             * Encoders report when the motor has moved a specified angle. They send out
-             * pulses which
-             * only occur at specific intervals (see our ARM_TICKS_PER_DEGREE). This means
-             * that the
-             * position our arm is currently at can be expressed as a whole number of
-             * encoder "ticks".
-             * The encoder will never report a partial number of ticks. So we can store the
-             * position in
-             * an integer (or int).
-             * A lot of the variables we use in FTC are doubles. These can capture fractions
-             * of whole
-             * numbers. Which is great when we want our arm to move to 122.5°, or we want to
-             * set our
-             * servo power to 0.5.
-             *
-             * setTargetPosition is expecting a number of encoder ticks to drive to. Since
-             * encoder
-             * ticks are always whole numbers, it expects an int. But we want to think about
-             * our
-             * arm position in degrees. And we'd like to be able to set it to fractions of a
-             * degree.
-             * So we make our arm positions Doubles. This allows us to precisely multiply
-             * together
-             * armPosition and our armPositionFudgeFactor. But once we're done multiplying
-             * these
-             * variables. We can decide which exact encoder tick we want our motor to go to.
-             * We do
-             * this by "typecasting" our double, into an int. This takes our fractional
-             * double and
-             * rounds it to the nearest whole number.
-             */
-
-            /*
-             * Check to see if our arm is over the current limit, and report via telemetry.
-             */
             if (((DcMotorEx) armMotor).isOverCurrent()) {
                 telemetry.addLine("MOTOR EXCEEDED CURRENT LIMIT!");
             }
@@ -471,9 +393,14 @@ public class Mecanum extends LinearOpMode {
              * send telemetry to the driver of the arm's current position and target
              * position
              */
+            telemetry.addData("Status", odo.getDeviceStatus());
             telemetry.addData("armTarget: ", armMotor.getTargetPosition());
             telemetry.addData("arm Encoder: ", armMotor.getCurrentPosition());
-            telemetry.addData("heading: ", imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
+            telemetry.addData("Velocity", velocity);
+            telemetry.addData("Pinpoint Frequency", odo.getFrequency()); // prints/gets the current refresh rate of the
+                                                                         // Pinpoint
+            telemetry.addData("Position", data);
+            telemetry.addData("REV Hub Frequency: ", frequency); // prints the control system refresh rate
             telemetry.update();
         }
     }
