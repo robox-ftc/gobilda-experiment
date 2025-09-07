@@ -35,8 +35,15 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.ImuOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.robotcore.external.navigation.Acceleration;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.Velocity;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+
+import java.util.Arrays;
 
 /*
  * This OpMode is an example driver-controlled (TeleOp) mode for the goBILDA 2024-2025 FTC
@@ -75,19 +82,22 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 @TeleOp(name = "Mecanum Double Controller", group = "Robot")
 // @Disabled
 public class Mecanum extends LinearOpMode {
-
     /* Declare OpMode members. */
     public DcMotor LFDrive = null; // left-front
     public DcMotor RFDrive = null; // right-front
     public DcMotor LBDrive = null; // left-back
-    public DcMotor RBDrive = null; // right-front
+    public DcMotor RBDrive = null; // right-back
     public DcMotor armMotor = null; // the arm motor
+    public DcMotor odoX = null; // x odometry
+    public DcMotor odoY = null; // y odometry
     public CRServo intake = null; // the active intake servo
     public Servo wrist = null; // the wrist servo
-    public IMU imu = null; //
+    public BHI260IMU imu = null; //
 
     final double MOTOR_SPEED = 0.7;
-    final double STRAFE_SPEED = 1.1; // adjust
+
+    final float ROTATION_SPEED = 1;
+    final double STRAFE_SPEED = 1.1; // adjust based on ChatGPT
 
     /*
      * This constant is the number of encoder ticks for each degree of rotation of
@@ -170,10 +180,13 @@ public class Mecanum extends LinearOpMode {
         double rightFront;
         double leftBack;
         double rightBack;
-//        double forward;
-//        double strafe;
-//        double rotate;
+        double strafe;
+        double rotation;
+        double forward;
         double max;
+
+        double[] position;
+        YawPitchRollAngles heading;
 
         /* Define and Initialize Motors */
         LFDrive = hardwareMap.get(DcMotor.class, "fl"); // the left drivetrain motor
@@ -181,6 +194,17 @@ public class Mecanum extends LinearOpMode {
         LBDrive = hardwareMap.get(DcMotor.class, "bl"); // the left drivetrain motor
         RBDrive = hardwareMap.get(DcMotor.class, "br"); // the right drivetrain motor
         armMotor = hardwareMap.get(DcMotor.class, "arm"); // the arm motor
+
+
+        odoX = hardwareMap.get(DcMotor.class, "odoX");
+        odoY = hardwareMap.get(DcMotor.class, "odoY");
+        position = new double[2];
+
+        odoX.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        odoY.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        odoX.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        odoY.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         /*
          * Most skid-steer/differential drive robots require reversing one motor to
@@ -230,10 +254,6 @@ public class Mecanum extends LinearOpMode {
         intake.setPower(INTAKE_OFF);
         wrist.setPosition(WRIST_FOLDED_IN);
 
-        /* Send telemetry message to signify robot waiting */
-        telemetry.addLine("Robot Ready.");
-        telemetry.update();
-        imu = hardwareMap.get(IMU.class, "imu");
 
 // Describe how the Hub is mounted
         RevHubOrientationOnRobot orientationOnRobot = new RevHubOrientationOnRobot(
@@ -242,10 +262,17 @@ public class Mecanum extends LinearOpMode {
         );
 
 // Create parameters with orientation
-        IMU.Parameters parameters = new IMU.Parameters(orientationOnRobot);
+        imu = hardwareMap.get(BHI260IMU.class, "imu");
+        BHI260IMU.Parameters parameters = new BHI260IMU.Parameters(orientationOnRobot);
 
 // Initialize IMU
         imu.initialize(parameters);
+        imu.resetYaw();
+
+
+        /* Send telemetry message to signify robot waiting */
+        telemetry.addLine("Robot Ready.");
+        telemetry.update();
 
 
         /* Wait for the game driver to press play */
@@ -277,10 +304,13 @@ public class Mecanum extends LinearOpMode {
 
 //            left = forward + rotate;
 //            right = forward - rotate;
-            leftFront = gamepad1.left_stick_y - gamepad1.left_stick_x * STRAFE_SPEED;
-            rightFront = gamepad1.right_stick_y + gamepad1.right_stick_x * STRAFE_SPEED;
-            leftBack = gamepad1.left_stick_y + gamepad1.left_stick_x * STRAFE_SPEED;
-            rightBack = gamepad1.right_stick_y - gamepad1.right_stick_x * STRAFE_SPEED;
+            forward = gamepad1.left_stick_y + gamepad1.right_stick_y;
+            rotation = (gamepad1.left_stick_y - gamepad1.right_stick_y) * ROTATION_SPEED;
+            strafe = (gamepad1.left_stick_x + gamepad1.right_stick_x) * STRAFE_SPEED;
+            leftFront = forward + rotation - strafe;
+            rightFront = forward - rotation + strafe;
+            leftBack = forward + rotation + strafe;
+            rightBack = forward - rotation - strafe;
 
             /* Normalize the values so neither exceed +/- 1.0 */
             max = Math.max(Math.max(Math.abs(leftFront), Math.abs(rightFront)), Math.max(Math.abs(leftBack), Math.abs(rightBack)));
@@ -460,6 +490,11 @@ public class Mecanum extends LinearOpMode {
              * rounds it to the nearest whole number.
              */
 
+            position[0] = odoX.getCurrentPosition();
+            position[1] = odoY.getCurrentPosition();
+            heading = imu.getRobotYawPitchRollAngles();
+
+
             /*
              * Check to see if our arm is over the current limit, and report via telemetry.
              */
@@ -473,7 +508,9 @@ public class Mecanum extends LinearOpMode {
              */
             telemetry.addData("armTarget: ", armMotor.getTargetPosition());
             telemetry.addData("arm Encoder: ", armMotor.getCurrentPosition());
-            telemetry.addData("heading: ", imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
+            telemetry.addData("heading: ", heading.getYaw());
+
+            telemetry.addData("position: ", Arrays.toString(position));
             telemetry.update();
         }
     }
