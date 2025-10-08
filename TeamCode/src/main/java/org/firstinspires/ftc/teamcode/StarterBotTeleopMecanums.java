@@ -261,7 +261,8 @@ public class StarterBotTeleopMecanums extends OpMode {
         /*
          * Now we call our "Launch" function.
          */
-        launch(gamepad1.rightBumperWasPressed());
+        // TODO: use rightBumperWasPressed
+        launch(gamepad1.right_bumper);
 
         /*
          * Show the state and motor powers
