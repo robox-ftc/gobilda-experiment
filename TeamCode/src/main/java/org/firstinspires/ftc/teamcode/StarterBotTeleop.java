@@ -1,54 +1,10 @@
-/*
- * Copyright (c) 2025 FIRST
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted (subject to the limitations in the disclaimer below) provided that
- * the following conditions are met:
- *
- * Redistributions of source code must retain the above copyright notice, this list
- * of conditions and the following disclaimer.
- *
- * Redistributions in binary form must reproduce the above copyright notice, this
- * list of conditions and the following disclaimer in the documentation and/or
- * other materials provided with the distribution.
- *
- * Neither the name of FIRST nor the names of its contributors may be used to
- * endorse or promote products derived from this software without specific prior
- * written permission.
- *
- * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS
- * LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
- * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 
 package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
-/*
- * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot for the
- * 2025-2026 FIRST® Tech Challenge season DECODE™. It leverages a differential/Skid-Steer
- * system for robot mobility, one high-speed motor driving two "launcher wheels", and two servos
- * which feed that launcher.
- *
- * Likely the most niche concept we'll use in this example is closed-loop motor velocity control.
- * This control method reads the current speed as reported by the motor's encoder and applies a varying
- * amount of power to reach, and then hold a target velocity. The FTC SDK calls this control method
- * "RUN_USING_ENCODER". This contrasts to the default "RUN_WITHOUT_ENCODER" where you control the power
- * applied to the motor directly.
- * Since the dynamics of a launcher wheel system varies greatly from those of most other FTC mechanisms,
- * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
- */
+import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 @TeleOp(name = "StarterBotTeleop", group = "StarterBot")
 //@Disabled
@@ -65,8 +21,10 @@ public class StarterBotTeleop extends OpMode {
 
     private Launcher launcher = null;
     private Drivetrain drivetrain = null;
-
     private Intake intake = null;
+
+    private boolean autoMode = false;
+    private boolean modeButtonDown = false;
 
     /*
      * TECH TIP: State Machines
@@ -90,8 +48,8 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void init() {
-        //drivetrain = new Drivetrain(hardwareMap);
-         launcher = new Launcher(hardwareMap);
+         drivetrain = new Drivetrain(hardwareMap);
+         launcher = new Launcher(hardwareMap, telemetry);
          intake = new Intake(hardwareMap);
         /*
          * Tell the driver that initialization is complete.
@@ -127,33 +85,44 @@ public class StarterBotTeleop extends OpMode {
          * both motors work to rotate the robot. Combinations of these inputs can be used to create
          * more complex maneuvers.
          */
-
         // Sensing
+        boolean newModeButtonDown = gamepad1.y || gamepad2.y;
+        if (modeButtonDown && !newModeButtonDown) {
+            autoMode = !autoMode; // we toggle auto mode when the button is switch from pressed to up.
+        }
+        this.modeButtonDown = newModeButtonDown;
+
         DrivetrainControls drivetrainControls = readDrivetrainControls(gamepad1, gamepad2);
         LauncherControls launcherControls = readLauncherControls(gamepad1, gamepad2);
         double intakeSpeed = readIntakeSpeed(gamepad1, gamepad2);
 
         // planning
         double[] drivetrainPowers = computeDriveTrainPower(drivetrainControls);
-        this.launcher.update(launcherControls);
-        this.intake.setPower(intakeSpeed);
+        this.drivetrain.setPowers(drivetrainPowers);
+        if (autoMode){
+            intakeSpeed = 0;
+            // TODO: compute the launcher's state if in auto mode.
+        }
+        else{
+            this.intake.setPower(intakeSpeed);
+        }
 
         // execution
-        this.intake.spin();
-
-        this.drivetrain.setPowers(drivetrainPowers);
-
-        if (this.launcher.autoMode){
-            launcher.autoRun();
+        drivetrain.run();
+        if (this.autoMode){
+            // launcher.autoRun();
         }
         else {
-            launcher.manualLaunch();
+            launcher.manualLaunch(launcherControls);
+            this.intake.spin();
         }
 
         /*
          * Show the state and motor powers
          */
-        telemetry.addData("State", this.launcher.launchState);
+        telemetry.addData("mode", autoMode);
+        telemetry.addData("trigger", launcherControls.trigger);
+        telemetry.addData("feederPosition", launcher.getFeederAngle());
     }
 
     private double readIntakeSpeed(Gamepad gamepad1, Gamepad gamepad2) {
@@ -161,17 +130,23 @@ public class StarterBotTeleop extends OpMode {
     }
 
     private DrivetrainControls readDrivetrainControls(Gamepad gamepad1, Gamepad gamepad2) {
-        double x = Math.max(gamepad1.left_stick_x, gamepad2.left_stick_x);
-        double y = Math.max(gamepad1.left_stick_y, gamepad2.left_stick_y);
-        double angle = Math.max(gamepad1.right_stick_x, gamepad2.right_stick_x);
-        return new DrivetrainControls(x, y, angle);
+        double x = gamepad1.left_stick_x + gamepad2.left_stick_x;
+        double absX = Math.abs(x);
+            x = Math.copySign(absX, x);
+        // Notes: stick's y positive direction is pointing down (toward player).
+        double y = -(gamepad1.left_stick_y + gamepad2.left_stick_y);
+        double absY = Math.abs(y);
+            y = Math.copySign(absY, y);
+        double a = gamepad1.right_stick_x + gamepad2.right_stick_x;
+        double absA = Math.abs(a);
+        a = Math.copySign(absA, a);
+        return new DrivetrainControls(x, y, a);
     }
 
     private LauncherControls readLauncherControls(Gamepad gamepad1, Gamepad gamepad2) {
         double wheelPress = Math.max(gamepad1.left_trigger, gamepad2.left_trigger);
         boolean trigger = gamepad1.a || gamepad2.a;
-        boolean modeButton = gamepad1.x || gamepad2.x;
-        return new LauncherControls(wheelPress, trigger, modeButton);
+        return new LauncherControls(wheelPress, trigger);
     }
 
     /*
