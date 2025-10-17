@@ -1,8 +1,9 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.Utils;
 
+import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.FLOAT;
 
-import static org.firstinspires.ftc.teamcode.Utils.applyAction;
+import static org.firstinspires.ftc.teamcode.Utils.Utils.applyAction;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -17,15 +18,17 @@ public class Launcher {
     public static double LAUNCHER_MAX_VELOCITY = 1620;
     public static double LAUNCHER_MIN_VELOCITY = 1075;
 
+    public static long SPIN_TIME = 1500;
+
     public static double FEEDER_ANGLE_SPAN = 300; // for goblida 2000-2500-0002
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
-    private double feederFireAngle = 0.0;
-    private double feederReloadAngle = 0.0;
+    private double feederFireAngle = 1.0;
+    private double feederReloadAngle = 0.1;
 
     public static double FEED_TIME_SECONDS = 0.20; //The feeder servos run this long when a shot is requested.
-    public enum BulletColor
+    public enum Artifact
     {
         Green,
         Purple
@@ -48,12 +51,15 @@ public class Launcher {
     private Servo feeder = null;
     public boolean shootRequested = false;
 
+    private long nextLaunch;
+
     public double targetSpeed = 0.0;
     public double targetPower = 0.0;
     ElapsedTime feederTimer = new ElapsedTime();
     Telemetry telemetry;
 
     public Launcher(HardwareMap hardwareMap, Telemetry telemetry){
+        nextLaunch = -1;
         this.telemetry = telemetry;
         initShooter(hardwareMap);
         initFeeder(hardwareMap);
@@ -118,11 +124,19 @@ public class Launcher {
     }
 
     public void manualLaunch(LauncherControls controls) {
-        spin(controls.wheelPower);
-        if (controls.trigger)
-            fire();
-        else
+        double power = controls.wheelPower;
+        if (power > 0) {
+            spin(power);
+            if (nextLaunch < 0) {
+                nextLaunch = System.currentTimeMillis();
+            } else if (System.currentTimeMillis() - SPIN_TIME >= nextLaunch) {
+                fire();
+                nextLaunch = -1;
+            }
+        } else {
+            nextLaunch = -1;
             reload();
+        }
     }
 
     public void autoRun(){
@@ -159,6 +173,9 @@ public class Launcher {
                 if (feederTimer.seconds() > FEED_TIME_SECONDS) {
                     launchState = LaunchState.IDLE;
                 }
+            default: {
+                break;
+            }
         }
     }
 }

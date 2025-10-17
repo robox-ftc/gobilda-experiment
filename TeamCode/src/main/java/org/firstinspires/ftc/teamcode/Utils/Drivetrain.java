@@ -1,8 +1,8 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.Utils;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
-import static org.firstinspires.ftc.teamcode.Utils.applyAction;
-import static org.firstinspires.ftc.teamcode.Utils.applyActions;
+import static org.firstinspires.ftc.teamcode.Utils.Utils.applyAction;
+import static org.firstinspires.ftc.teamcode.Utils.Utils.applyActions;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -24,10 +24,10 @@ public class Drivetrain {
 
     public void init(HardwareMap hardwareMap){
 
-        frontLeftDrive = hardwareMap.get(DcMotor.class, "front_left_drive");
-        frontRightDrive = hardwareMap.get(DcMotor.class, "front_right_drive");
-        rearLeftDrive = hardwareMap.get(DcMotor.class, "rear_left_drive");
-        rearRightDrive = hardwareMap.get(DcMotor.class, "rear_right_drive");
+        frontLeftDrive = hardwareMap.get(DcMotor.class, "lfdrive");
+        frontRightDrive = hardwareMap.get(DcMotor.class, "rfdrive");
+        rearLeftDrive = hardwareMap.get(DcMotor.class, "lbdrive");
+        rearRightDrive = hardwareMap.get(DcMotor.class, "rbdrive");
 
         driveMotors[0] = frontLeftDrive;
         driveMotors[1] = frontRightDrive;

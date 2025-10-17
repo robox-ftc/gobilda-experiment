@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.Utils;
 
 public class LauncherControls
 {
@@ -7,11 +7,9 @@ public class LauncherControls
 
     public LauncherControls(){
         this.wheelPower = 0;
-        this.trigger = false;
     }
 
-    public LauncherControls(double wheelPress, boolean trigger) {
+    public LauncherControls(double wheelPress) {
         this.wheelPower = wheelPress;
-        this.trigger = trigger;
     }
 }

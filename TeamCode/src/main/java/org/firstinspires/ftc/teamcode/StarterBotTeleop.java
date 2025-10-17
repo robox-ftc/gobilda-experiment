@@ -4,7 +4,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Utils.*;
 
 @TeleOp(name = "StarterBotTeleop", group = "StarterBot")
 //@Disabled
@@ -20,10 +20,13 @@ public class StarterBotTeleop extends OpMode {
      */
 
     private Launcher launcher = null;
+    private LauncherControls launcherControls = null;
     private Drivetrain drivetrain = null;
+    private DrivetrainControls drivetrainControls = null;
+    private Autonomous auto = null;
     private Intake intake = null;
 
-    private boolean autoMode = false;
+    private boolean autoMode = true;
     private boolean modeButtonDown = false;
 
     /*
@@ -49,8 +52,11 @@ public class StarterBotTeleop extends OpMode {
     @Override
     public void init() {
          drivetrain = new Drivetrain(hardwareMap);
+         drivetrainControls = new DrivetrainControls();
          launcher = new Launcher(hardwareMap, telemetry);
+         launcherControls = new LauncherControls();
          intake = new Intake(hardwareMap);
+         auto = new Autonomous(drivetrainControls, launcherControls, telemetry);
         /*
          * Tell the driver that initialization is complete.
          */
@@ -92,61 +98,52 @@ public class StarterBotTeleop extends OpMode {
         }
         this.modeButtonDown = newModeButtonDown;
 
-        DrivetrainControls drivetrainControls = readDrivetrainControls(gamepad1, gamepad2);
-        LauncherControls launcherControls = readLauncherControls(gamepad1, gamepad2);
-        double intakeSpeed = readIntakeSpeed(gamepad1, gamepad2);
+        double intakeSpeed = autoMode ? 1.0 : readIntakeSpeed(gamepad1, gamepad2);
 
         // planning
-        double[] drivetrainPowers = computeDriveTrainPower(drivetrainControls);
-        this.drivetrain.setPowers(drivetrainPowers);
-        if (autoMode){
-            intakeSpeed = 0;
-            // TODO: compute the launcher's state if in auto mode.
+        if (autoMode && auto.status) {
+            auto.run();
+            if (!auto.status) {
+                autoMode = false;
+            }
+        } else {
+            drivetrainControls = readDrivetrainControls(gamepad1, gamepad2);
+            launcherControls = readLauncherControls(gamepad1, gamepad2);
         }
-        else{
-            this.intake.setPower(intakeSpeed);
-        }
-
+        intake.setPower(intakeSpeed);
+        telemetry.addData("translationY", drivetrainControls.translationY);
+        telemetry.addData("rotation", drivetrainControls.rotation);
+        drivetrain.setPowers(computeDriveTrainPower(drivetrainControls));
         // execution
         drivetrain.run();
-        if (this.autoMode){
-            // launcher.autoRun();
-        }
-        else {
-            launcher.manualLaunch(launcherControls);
-            this.intake.spin();
-        }
+        launcher.manualLaunch(launcherControls);
+        intake.spin();
 
         /*
          * Show the state and motor powers
          */
         telemetry.addData("mode", autoMode);
+        telemetry.addData("status", auto.status);
         telemetry.addData("trigger", launcherControls.trigger);
+        telemetry.addData("intake", intakeSpeed);
         telemetry.addData("feederPosition", launcher.getFeederAngle());
     }
 
     private double readIntakeSpeed(Gamepad gamepad1, Gamepad gamepad2) {
-        return Math.max(gamepad1.right_trigger, gamepad2.right_trigger);
+        return gamepad1.rightBumperWasPressed() || gamepad2.rightBumperWasPressed() ? 1.0 : Math.max(gamepad1.right_trigger, gamepad2.right_trigger);
     }
 
     private DrivetrainControls readDrivetrainControls(Gamepad gamepad1, Gamepad gamepad2) {
         double x = gamepad1.left_stick_x + gamepad2.left_stick_x;
-        double absX = Math.abs(x);
-            x = Math.copySign(absX, x);
         // Notes: stick's y positive direction is pointing down (toward player).
         double y = -(gamepad1.left_stick_y + gamepad2.left_stick_y);
-        double absY = Math.abs(y);
-            y = Math.copySign(absY, y);
         double a = gamepad1.right_stick_x + gamepad2.right_stick_x;
-        double absA = Math.abs(a);
-        a = Math.copySign(absA, a);
         return new DrivetrainControls(x, y, a);
     }
 
     private LauncherControls readLauncherControls(Gamepad gamepad1, Gamepad gamepad2) {
         double wheelPress = Math.max(gamepad1.left_trigger, gamepad2.left_trigger);
-        boolean trigger = gamepad1.a || gamepad2.a;
-        return new LauncherControls(wheelPress, trigger);
+        return new LauncherControls(wheelPress);
     }
 
     /*

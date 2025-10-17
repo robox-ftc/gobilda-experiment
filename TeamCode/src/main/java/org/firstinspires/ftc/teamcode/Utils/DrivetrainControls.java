@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.Utils;
 
 public class DrivetrainControls {
     public double translationX;
@@ -11,7 +11,7 @@ public class DrivetrainControls {
         this.rotation = rotation;
     }
 
-    public DrivetrainControls(){
+    public DrivetrainControls() {
         this.translationX = 0;
         this.translationY = 0;
         this.rotation = 0;
