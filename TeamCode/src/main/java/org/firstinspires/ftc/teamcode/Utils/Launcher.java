@@ -12,20 +12,21 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 public class Launcher {
 
     public static double LAUNCHER_MAX_VELOCITY = 1620;
     public static double LAUNCHER_MIN_VELOCITY = 1075;
 
-    public static long SPIN_TIME = 1500;
+    public static long ERROR_RATE = 420;
 
     public static double FEEDER_ANGLE_SPAN = 300; // for goblida 2000-2500-0002
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
-    private double feederFireAngle = 1.0;
-    private double feederReloadAngle = 0.1;
+    private double feederFireAngle;
+    private double feederReloadAngle;
 
     public static double FEED_TIME_SECONDS = 0.20; //The feeder servos run this long when a shot is requested.
     public enum Artifact
@@ -49,17 +50,16 @@ public class Launcher {
     private DcMotorEx launcherRight = null;
     private DcMotorEx[] launchers = new DcMotorEx[2];
     private Servo feeder = null;
-    public boolean shootRequested = false;
 
-    private long nextLaunch;
+    private boolean launching;
 
-    public double targetSpeed = 0.0;
-    public double targetPower = 0.0;
+    public double targetSpeed;
+    public double targetPower;
     ElapsedTime feederTimer = new ElapsedTime();
     Telemetry telemetry;
 
     public Launcher(HardwareMap hardwareMap, Telemetry telemetry){
-        nextLaunch = -1;
+        launching = false;
         this.telemetry = telemetry;
         initShooter(hardwareMap);
         initFeeder(hardwareMap);
@@ -87,18 +87,14 @@ public class Launcher {
         feeder = hardwareMap.get(Servo.class, "feeder");
 
         // The following setting depends on your hardware mountings.
-        feeder.resetDeviceConfigurationForOpMode();
-        feeder.setPosition(0.5);
-        telemetry.addLine("init position" + feeder.getPosition());
         this.feederReloadAngle = 0.5;
         this.feederFireAngle = this.feederReloadAngle - 75.0 / FEEDER_ANGLE_SPAN;
+        feeder.resetDeviceConfigurationForOpMode();
+        feeder.setPosition(feederReloadAngle);
+        telemetry.addLine("init position" + feeder.getPosition());
         telemetry.addLine("range=" + this.feederReloadAngle + ", " + this.feederFireAngle);
 
         feederTimer = new ElapsedTime();
-    }
-
-    public void setTargetPower(double power){
-        this.targetPower = power;
     }
 
     public void spin(double power){
@@ -123,24 +119,27 @@ public class Launcher {
         return feeder.getPosition();
     }
 
-    public void manualLaunch(LauncherControls controls) {
+    public void autoLaunch(LauncherControls controls) {
         double power = controls.wheelPower;
         if (power > 0) {
             spin(power);
-            if (nextLaunch < 0) {
-                nextLaunch = System.currentTimeMillis();
-            } else if (System.currentTimeMillis() - SPIN_TIME >= nextLaunch) {
+            if (!launching) {
+                launching = true;
+            } else if (launcherLeft.getVelocity(AngleUnit.DEGREES) >= LAUNCHER_MAX_VELOCITY - ERROR_RATE) {
                 fire();
-                nextLaunch = -1;
+                launching = false;
             }
         } else {
-            nextLaunch = -1;
+            launching = false;
             reload();
         }
     }
-
-    public void autoRun(){
-        launch(this.shootRequested);
+    public void manualLaunch(LauncherControls controls) {
+        spin(controls.wheelPower);
+        if (controls.trigger)
+            fire();
+        else
+            reload();
     }
 
     public void launch(boolean shotRequested) {
@@ -173,6 +172,7 @@ public class Launcher {
                 if (feederTimer.seconds() > FEED_TIME_SECONDS) {
                     launchState = LaunchState.IDLE;
                 }
+                break;
             default: {
                 break;
             }

@@ -28,8 +28,4 @@ public class Intake {
         frontIntakeWheel.setPower(targetPower);
     }
 
-    public void stop(){
-        targetPower = 0.0;
-        frontIntakeWheel.setPower(targetPower);
-    }
 }

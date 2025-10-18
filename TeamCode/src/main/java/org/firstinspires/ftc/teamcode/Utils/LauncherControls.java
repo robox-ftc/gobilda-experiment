@@ -9,7 +9,8 @@ public class LauncherControls
         this.wheelPower = 0;
     }
 
-    public LauncherControls(double wheelPress) {
+    public LauncherControls(double wheelPress, boolean trigger) {
         this.wheelPower = wheelPress;
+        this.trigger = trigger;
     }
 }

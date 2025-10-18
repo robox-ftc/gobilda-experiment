@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.bosch.BNO055IMU;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Utils.Drivetrain;
@@ -15,49 +16,56 @@ import java.util.LinkedList;
 
 public class Autonomous {
     public boolean status;
-    private long start;
     public LinkedList<Task> queue;
-    private DrivetrainControls drivetrainControls;
-    private LauncherControls launcherControls;
-    private Telemetry telemetry;
-    public Autonomous(DrivetrainControls drivetrainControls, LauncherControls launcherControls, Telemetry telemetry) {
+    private final DrivetrainControls drivetrainControls;
+    private final LauncherControls launcherControls;
+    private final ElapsedTime timer;
+    public Autonomous(DrivetrainControls drivetrainControls, LauncherControls launcherControls) {
         status = true;
         this.drivetrainControls = drivetrainControls;
         this.launcherControls = launcherControls;
         queue = new LinkedList<>();
-        start = System.currentTimeMillis();
+        timer = new ElapsedTime();
+        timer.reset();
 
         // hardcoded tasks
-            queue.add(new Task(2000, 3000, 0.5, Task.TRANSLATE));
-            queue.add(new Task(3000, 3100, -0.1, Task.ROTATE));
-            queue.add(new Task(3100, 5000, 1, Task.LAUNCH));
+            queue.add(new Task(2000, 2250, 0.5, Task.TRANSLATE));
+            queue.add(new Task(3000, 3100, -0.05, Task.ROTATE));
+            queue.add(new Task(4000, 8000, 1, Task.LAUNCH));
+            queue.add(new Task(8000, 8200, -0.1, Task.ROTATE));
+            queue.add(new Task(8250, 8500, 0.5, Task.TRANSLATE));
+            queue.add(new Task(8600, 8750, -0.05, Task.ROTATE));
 
-        this.telemetry = telemetry;
     }
 
     public void run() {
         if (!queue.isEmpty()) {
-            long time = System.currentTimeMillis() - start;
-            Task curr = queue.getFirst();
-            if (time > curr.end) {
-                queue.removeFirst();
-            }
-            if (time >= curr.begin) {
-                execute(curr);
+            Iterator<Task> iter = queue.iterator();
+            Task curr;
+            while (iter.hasNext()) {
+                curr = iter.next();
+                if (timer.milliseconds() > curr.end) {
+                    execute(curr, true);
+                    iter.remove();
+                }
+                if (timer.milliseconds() >= curr.begin) {
+                    execute(curr, false);
+                } else {
+                    break;
+                }
             }
         } else {
             status = false;
         }
     }
 
-    public void execute(Task task) {
+    public void execute(Task task, boolean stop) {
         if (task.type == Task.TRANSLATE) {
-            drivetrainControls.translationY = task.magnitude;
+            drivetrainControls.translationY = stop ? 0 : task.magnitude;
         } else if (task.type == Task.ROTATE) {
-            this.drivetrainControls.rotation = task.magnitude;
-            telemetry.addData("currentRotation", drivetrainControls.rotation);
+            drivetrainControls.rotation = stop ? 0 : task.magnitude;
         } else {
-            launcherControls.wheelPower = task.magnitude;
+            launcherControls.wheelPower = stop ? 0 : task.magnitude;
         }
     }
 }

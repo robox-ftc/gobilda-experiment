@@ -9,8 +9,7 @@ import org.firstinspires.ftc.teamcode.Utils.*;
 @TeleOp(name = "StarterBotTeleop", group = "StarterBot")
 //@Disabled
 public class StarterBotTeleop extends OpMode {
-    final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
-    final double FULL_SPEED = 1.0;
+    private static final double AUTO_INTAKE_SPEED = 1.0;
 
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
@@ -25,9 +24,9 @@ public class StarterBotTeleop extends OpMode {
     private DrivetrainControls drivetrainControls = null;
     private Autonomous auto = null;
     private Intake intake = null;
+    private boolean modeButtonDown;
 
     private boolean autoMode = true;
-    private boolean modeButtonDown = false;
 
     /*
      * TECH TIP: State Machines
@@ -56,11 +55,12 @@ public class StarterBotTeleop extends OpMode {
          launcher = new Launcher(hardwareMap, telemetry);
          launcherControls = new LauncherControls();
          intake = new Intake(hardwareMap);
-         auto = new Autonomous(drivetrainControls, launcherControls, telemetry);
+         auto = new Autonomous(drivetrainControls, launcherControls);
         /*
          * Tell the driver that initialization is complete.
          */
         telemetry.addData("Status", "Initialized");
+        modeButtonDown = false;
     }
 
     /*
@@ -94,11 +94,11 @@ public class StarterBotTeleop extends OpMode {
         // Sensing
         boolean newModeButtonDown = gamepad1.y || gamepad2.y;
         if (modeButtonDown && !newModeButtonDown) {
-            autoMode = !autoMode; // we toggle auto mode when the button is switch from pressed to up.
+            autoMode = !autoMode;
         }
         this.modeButtonDown = newModeButtonDown;
 
-        double intakeSpeed = autoMode ? 1.0 : readIntakeSpeed(gamepad1, gamepad2);
+        double intakeSpeed = autoMode ? AUTO_INTAKE_SPEED : readIntakeSpeed(gamepad1, gamepad2);
 
         // planning
         if (autoMode && auto.status) {
@@ -111,12 +111,14 @@ public class StarterBotTeleop extends OpMode {
             launcherControls = readLauncherControls(gamepad1, gamepad2);
         }
         intake.setPower(intakeSpeed);
-        telemetry.addData("translationY", drivetrainControls.translationY);
-        telemetry.addData("rotation", drivetrainControls.rotation);
         drivetrain.setPowers(computeDriveTrainPower(drivetrainControls));
         // execution
         drivetrain.run();
-        launcher.manualLaunch(launcherControls);
+        if (autoMode || (gamepad1.leftBumperWasPressed() || gamepad2.leftBumperWasPressed())) {
+            launcher.autoLaunch(launcherControls);
+        } else {
+            launcher.manualLaunch(launcherControls);
+        }
         intake.spin();
 
         /*
@@ -143,7 +145,8 @@ public class StarterBotTeleop extends OpMode {
 
     private LauncherControls readLauncherControls(Gamepad gamepad1, Gamepad gamepad2) {
         double wheelPress = Math.max(gamepad1.left_trigger, gamepad2.left_trigger);
-        return new LauncherControls(wheelPress);
+        boolean trigger = gamepad1.a || gamepad2.a;
+        return new LauncherControls(wheelPress, trigger);
     }
 
     /*

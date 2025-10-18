@@ -35,7 +35,7 @@ public class Drivetrain {
         driveMotors[3] = rearLeftDrive;
         frontRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
         rearRightDrive.setDirection(DcMotorSimple.Direction.REVERSE);
-        applyAction(driveMotors, (motor) -> motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER));
+        applyAction(driveMotors, (motor) -> motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER));
         // for now, to be changed
         applyAction(driveMotors, (motor) -> motor.setZeroPowerBehavior(BRAKE));
         applyAction(driveMotors, (motor) -> motor.setPower(0.0));
