@@ -70,6 +70,8 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
     double leftBackPower;
     double rightBackPower;
 
+    double launcherSpeed;
+
     /*
      * Code to run ONCE when the driver hits INIT
      */
