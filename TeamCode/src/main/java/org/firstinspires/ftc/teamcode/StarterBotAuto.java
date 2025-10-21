@@ -34,19 +34,23 @@ package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
+import static org.firstinspires.ftc.teamcode.Utils.applyAction;
+
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.vision.VisionPortal;
 
+import android.util.Size;
 import java.util.Locale;
 
 /*
@@ -79,8 +83,9 @@ public class StarterBotAuto extends OpMode {
      * launcher should run
      * at. The minimum velocity is a threshold for determining when to fire.
      */
-    final double LAUNCHER_TARGET_VELOCITY = 1125;
-    final double LAUNCHER_MIN_VELOCITY = 1075;
+    final double LAUNCHER_TARGET_VELOCITY_1 = 1125;
+    final double LAUNCHER_TARGET_VELOCITY_2 = 1687.5;
+    final double LAUNCHER_TARGET_VELOCITY_3 = 2250;
 
     /*
      * The number of seconds that we wait between each of our 3 shots from the
@@ -116,6 +121,14 @@ public class StarterBotAuto extends OpMode {
 
     double robotRotationAngle = 45;
 
+    double feederReloadAngle = 0.5;
+    double feederFireAngle = 0.27;
+
+    final double TURRET_TICKS_PER_DEGREE = 5272.0 / 360;
+
+    final int RESOLUTION_WIDTH = 640;
+    final int RESOLUTION_HEIGHT = 480;
+
     /*
      * Here we create three timers which we use in different parts of our code. Each
      * of these is an
@@ -124,18 +137,22 @@ public class StarterBotAuto extends OpMode {
      * from each other.
      */
     private ElapsedTime shotTimer = new ElapsedTime();
-    private ElapsedTime feederTimer = new ElapsedTime();
+    protected ElapsedTime feederTimer = new ElapsedTime();
     private ElapsedTime driveTimer = new ElapsedTime();
 
     // Declare OpMode members.
-    private DcMotor leftFrontDrive = null;
-    private DcMotor rightFrontDrive = null;
-    private DcMotor leftBackDrive = null;
-    private DcMotor rightBackDrive = null;
-    private DcMotorEx launcher = null;
-    private CRServo leftFeeder = null;
-    private CRServo rightFeeder = null;
-    private GoBildaPinpointDriver odo = null;
+    protected DcMotor leftFrontDrive = null;
+    protected DcMotor rightFrontDrive = null;
+    protected DcMotor leftBackDrive = null;
+    protected DcMotor rightBackDrive = null;
+    protected DcMotorEx[] launchers = null;
+    protected Servo feeder = null;
+    protected DcMotorEx frontIntakeWheel = null;
+    protected DcMotorEx turret = null;
+
+    protected GoBildaPinpointDriver odo = null;
+
+    protected VisionPortal portal = null;
 
     /*
      * TECH TIP: State Machines
@@ -156,10 +173,11 @@ public class StarterBotAuto extends OpMode {
      * functions and autonomous routines in a way that avoids loops within loops,
      * and "waits."
      */
-    private enum LaunchState {
+    protected enum LaunchState {
         IDLE,
         PREPARE,
         LAUNCH,
+        LAUNCHING,
     }
 
     /*
@@ -170,7 +188,7 @@ public class StarterBotAuto extends OpMode {
      * multiple copies of the same enum which have different names. Here we just
      * have one.
      */
-    private LaunchState launchState;
+    protected LaunchState launchState;
 
     /*
      * Here is our auto state machine enum. This captures each action we'd like to
@@ -196,7 +214,7 @@ public class StarterBotAuto extends OpMode {
      */
     private enum Alliance {
         RED,
-        BLUE;
+        BLUE
     }
 
     /*
@@ -204,7 +222,9 @@ public class StarterBotAuto extends OpMode {
      */
     private Alliance alliance = Alliance.BLUE;
 
-    private boolean drivetrainOnly = true;
+    protected boolean drivetrainOnly = true;
+
+    protected boolean reverseRotate = false;
 
     /*
      * This code runs ONCE when the driver hits INIT.
@@ -228,16 +248,29 @@ public class StarterBotAuto extends OpMode {
          * to 'get' must correspond to the names assigned during the robot configuration
          * step (using the FTC Robot Controller app on the driver's station).
          */
-        leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
-        rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
-        leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
-        rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
-        if (!drivetrainOnly) {
-            launcher = hardwareMap.get(DcMotorEx.class, "launcher");
-            leftFeeder = hardwareMap.get(CRServo.class, "left_feeder");
-            rightFeeder = hardwareMap.get(CRServo.class, "right_feeder");
+        leftFrontDrive = hardwareMap.tryGet(DcMotor.class, "left_front_drive");
+        if (leftFrontDrive != null) {
+            leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
+            rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
+            leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
+            rightBackDrive = hardwareMap.get(DcMotor.class, "right_back_drive");
+        } else {
+            leftFrontDrive = hardwareMap.get(DcMotor.class, "rbdrive");
+            rightFrontDrive = hardwareMap.get(DcMotor.class, "lbdrive");
+            leftBackDrive = hardwareMap.get(DcMotor.class, "rfdrive");
+            rightBackDrive = hardwareMap.get(DcMotor.class, "lfdrive");
+            reverseRotate = true;
         }
-        odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
+
+        launchers = new DcMotorEx[] { hardwareMap.tryGet(DcMotorEx.class, "leftLauncher"),
+                hardwareMap.tryGet(DcMotorEx.class, "rightLauncher") };
+        feeder = hardwareMap.tryGet(Servo.class, "feeder");
+        frontIntakeWheel = hardwareMap.tryGet(DcMotorEx.class, "intake");
+        turret = hardwareMap.tryGet(DcMotorEx.class, "turret");
+
+        odo = hardwareMap.tryGet(GoBildaPinpointDriver.class, "odo");
+
+        WebcamName webcam = hardwareMap.tryGet(WebcamName.class, "Webcam 1");
 
         /*
          * To drive forward, most robots need the motor on one side to be reversed,
@@ -272,8 +305,9 @@ public class StarterBotAuto extends OpMode {
         rightFrontDrive.setZeroPowerBehavior(BRAKE);
         leftBackDrive.setZeroPowerBehavior(BRAKE);
         rightBackDrive.setZeroPowerBehavior(BRAKE);
-        if (!drivetrainOnly) {
-            launcher.setZeroPowerBehavior(BRAKE);
+        if (launchers[0] != null) {
+            drivetrainOnly = false;
+            applyAction(launchers, (motor) -> motor.setZeroPowerBehavior(BRAKE));
 
             /*
              * Here we set our launcher to the RUN_USING_ENCODER runmode.
@@ -283,28 +317,47 @@ public class StarterBotAuto extends OpMode {
              * encoders are plugged
              * into the port right beside the motor itself.
              */
-            launcher.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            applyAction(launchers, (motor) -> motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER));
 
             /*
              * Here we set the aforementioned PID coefficients. You shouldn't have to do
              * this for any
              * other motors on this robot.
              */
-            launcher.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(300, 0, 0, 10));
+            applyAction(launchers, (motor) -> motor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER,
+                    new PIDFCoefficients(300, 0, 0, 10)));
+            launchers[0].setDirection(DcMotor.Direction.REVERSE);
+            launchers[1].setDirection(DcMotor.Direction.FORWARD);
+
+            turret.setZeroPowerBehavior(BRAKE);
 
             /*
              * Much like our drivetrain motors, we set the left feeder servo to reverse so
              * that they
              * both work to feed the ball into the robot.
              */
-            leftFeeder.setDirection(DcMotorSimple.Direction.REVERSE);
+            feeder.resetDeviceConfigurationForOpMode();
+            feeder.setPosition(feederReloadAngle);
+            frontIntakeWheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            frontIntakeWheel.setZeroPowerBehavior(BRAKE);
+            telemetry.addLine("init position" + feeder.getPosition());
+            telemetry.addLine("range=" + feederReloadAngle + ", " + feederFireAngle);
         }
 
-        odo.setOffsets(-84.0, -168.0, DistanceUnit.MM);
-        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD,
-                GoBildaPinpointDriver.EncoderDirection.FORWARD);
-        odo.resetPosAndIMU();
+        if (odo != null) {
+            odo.setOffsets(-84.0, -168.0, DistanceUnit.MM);
+            odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+            odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD,
+                    GoBildaPinpointDriver.EncoderDirection.FORWARD);
+            odo.resetPosAndIMU();
+        }
+
+        if (webcam != null) {
+            portal = new VisionPortal.Builder()
+                    .setCamera(webcam)
+                    .setCameraResolution(new Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT))
+                    .build();
+        }
 
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
@@ -317,16 +370,6 @@ public class StarterBotAuto extends OpMode {
     @Override
     public void init_loop() {
         /*
-         * We also set the servo power to 0 here to make sure that the servo controller
-         * is booted
-         * up and ready to go.
-         */
-        if (!drivetrainOnly) {
-            rightFeeder.setPower(0);
-            leftFeeder.setPower(0);
-        }
-
-        /*
          * Here we allow the driver to select which alliance we are on using the
          * gamepad.
          */
@@ -337,7 +380,7 @@ public class StarterBotAuto extends OpMode {
         }
         if (gamepad1.y) {
             drivetrainOnly = !drivetrainOnly;
-            if (rightFeeder == null || leftFeeder == null) {
+            if (launchers[0] == null) {
                 drivetrainOnly = true;
             }
         }
@@ -347,9 +390,11 @@ public class StarterBotAuto extends OpMode {
         telemetry.addData("Press Y", "to enable/disable launcher");
         telemetry.addData("Selected Alliance", alliance);
         telemetry.addData("Drivetrain Only", drivetrainOnly);
-        telemetry.addData("X offset", odo.getXOffset(DistanceUnit.MM));
-        telemetry.addData("Y offset", odo.getYOffset(DistanceUnit.MM));
-        telemetry.addData("Heading Scalar", odo.getYawScalar());
+        if (odo != null) {
+            telemetry.addData("X offset", odo.getXOffset(DistanceUnit.MM));
+            telemetry.addData("Y offset", odo.getYOffset(DistanceUnit.MM));
+            telemetry.addData("Heading Scalar", odo.getYawScalar());
+        }
     }
 
     /*
@@ -379,10 +424,13 @@ public class StarterBotAuto extends OpMode {
          * one case,
          * we know our enum isn't reflecting a different state.
          */
-        odo.update();
-        Pose2D pos = odo.getPosition();
-        String data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM),
-                pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
+        String data = "";
+        if (odo != null) {
+            odo.update();
+            Pose2D pos = odo.getPosition();
+            data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM),
+                    pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
+        }
 
         switch (autonomousState) {
             /*
@@ -434,7 +482,7 @@ public class StarterBotAuto extends OpMode {
                 break;
 
             case LAUNCH:
-                launch(true);
+                launch(true, LAUNCHER_TARGET_VELOCITY_1);
                 autonomousState = AutonomousState.WAIT_FOR_LAUNCH;
                 break;
 
@@ -456,7 +504,7 @@ public class StarterBotAuto extends OpMode {
                  * motors
                  * and move onto the next state.
                  */
-                if (launch(false)) {
+                if (launch(false, LAUNCHER_TARGET_VELOCITY_1)) {
                     shotsToFire -= 1;
                     if (shotsToFire > 0) {
                         autonomousState = AutonomousState.LAUNCH;
@@ -466,7 +514,7 @@ public class StarterBotAuto extends OpMode {
                         leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                         rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                         if (!drivetrainOnly) {
-                            launcher.setVelocity(0);
+                            applyAction(launchers, (launcher) -> launcher.setVelocity(0));
                         }
                         autonomousState = AutonomousState.DRIVING_AWAY_FROM_GOAL;
                     }
@@ -556,7 +604,7 @@ public class StarterBotAuto extends OpMode {
      * @return "true" for one cycle after a ball has been successfully launched,
      *         "false" otherwise.
      */
-    boolean launch(boolean shotRequested) {
+    boolean launch(boolean shotRequested, double speed) {
         switch (launchState) {
             case IDLE:
                 if (shotRequested) {
@@ -566,11 +614,11 @@ public class StarterBotAuto extends OpMode {
                 break;
             case PREPARE:
                 if (!drivetrainOnly) {
-                    launcher.setVelocity(LAUNCHER_TARGET_VELOCITY);
-                    if (launcher.getVelocity() > LAUNCHER_MIN_VELOCITY) {
+                    applyAction(launchers, (launcher) -> launcher.setVelocity(speed));
+
+                    if (launchers[0].getVelocity() > speed - 50
+                            && launchers[1].getVelocity() > speed - 50) {
                         launchState = LaunchState.LAUNCH;
-                        leftFeeder.setPower(1);
-                        rightFeeder.setPower(1);
                         feederTimer.reset();
                     }
                 } else {
@@ -581,8 +629,7 @@ public class StarterBotAuto extends OpMode {
             case LAUNCH:
                 if (!drivetrainOnly) {
                     if (feederTimer.seconds() > FEED_TIME) {
-                        leftFeeder.setPower(0);
-                        rightFeeder.setPower(0);
+                        feeder.setPosition(feederFireAngle);
 
                         if (shotTimer.seconds() > TIME_BETWEEN_SHOTS) {
                             launchState = LaunchState.IDLE;
