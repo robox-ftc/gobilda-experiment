@@ -26,32 +26,31 @@ public class Autonomous {
         this.launcherControls = launcherControls;
         queue = new LinkedList<>();
         timer = new ElapsedTime();
+    }
+    public void start() { // run upon start (not loop)
         timer.reset();
 
         // hardcoded tasks
-            queue.add(new Task(2000, 2250, 0.5, Task.TRANSLATE));
-            queue.add(new Task(3000, 3100, -0.05, Task.ROTATE));
-            queue.add(new Task(4000, 8000, 1, Task.LAUNCH));
-            queue.add(new Task(8000, 8200, -0.1, Task.ROTATE));
-            queue.add(new Task(8250, 8500, 0.5, Task.TRANSLATE));
-            queue.add(new Task(8600, 8750, -0.05, Task.ROTATE));
-
+        queue.add(new Task(2000, 2250, 0.5, Task.TRANSLATE));
+        queue.add(new Task(3000, 3100, -0.05, Task.ROTATE));
+        queue.add(new Task(4000, 8000, 1, Task.LAUNCH));
+        queue.add(new Task(8000, 8200, -0.1, Task.ROTATE));
+        queue.add(new Task(8250, 8500, 0.5, Task.TRANSLATE));
+        queue.add(new Task(8600, 8750, -0.05, Task.ROTATE));
     }
 
     public void run() {
         if (!queue.isEmpty()) {
             Iterator<Task> iter = queue.iterator();
             Task curr;
+            int time = (int) timer.milliseconds();
             while (iter.hasNext()) {
                 curr = iter.next();
-                if (timer.milliseconds() > curr.end) {
+                if (time >= curr.begin && time <= curr.end) {
+                    execute(curr, false);
+                } else if (time > curr.end) {
                     execute(curr, true);
                     iter.remove();
-                }
-                if (timer.milliseconds() >= curr.begin) {
-                    execute(curr, false);
-                } else {
-                    break;
                 }
             }
         } else {

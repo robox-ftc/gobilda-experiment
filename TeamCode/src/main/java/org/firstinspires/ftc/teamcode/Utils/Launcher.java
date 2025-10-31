@@ -19,7 +19,7 @@ public class Launcher {
     public static double LAUNCHER_MAX_VELOCITY = 1620;
     public static double LAUNCHER_MIN_VELOCITY = 1075;
 
-    public static long ERROR_RATE = 420;
+    public static long ERROR_RATE = 324;
 
     public static double FEEDER_ANGLE_SPAN = 300; // for goblida 2000-2500-0002
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
