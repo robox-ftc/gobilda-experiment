@@ -2,15 +2,12 @@
 package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.teamcode.Utils.*;
 
-@TeleOp(name = "StarterBotTeleop", group = "StarterBot")
+@TeleOp(name = "StarterBotTeleop-2025Decode", group = "StarterBot")
 //@Disabled
 public class StarterBotTeleop extends OpMode {
-    private static final double AUTO_INTAKE_SPEED = 1.0;
-
     /*
      * When we control our launcher motor, we are using encoders. These allow the control system
      * to read the current speed of the motor and apply more or less power to keep it at a constant
@@ -19,14 +16,10 @@ public class StarterBotTeleop extends OpMode {
      */
 
     private Launcher launcher = null;
-    private LauncherControls launcherControls = null;
     private Drivetrain drivetrain = null;
-    private DrivetrainControls drivetrainControls = null;
-    private Autonomous auto = null;
     private Intake intake = null;
-    private boolean modeButtonDown;
-
-    private boolean autoMode = true;
+    public GamePadReadings oldGamePadReadings = new GamePadReadings();
+    private boolean autoMode = false;
 
     /*
      * TECH TIP: State Machines
@@ -50,17 +43,11 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void init() {
-         drivetrain = new Drivetrain(hardwareMap);
-         drivetrainControls = new DrivetrainControls();
+         drivetrain = new Drivetrain(hardwareMap, telemetry);
          launcher = new Launcher(hardwareMap, telemetry);
-         launcherControls = new LauncherControls();
-         intake = new Intake(hardwareMap);
-         auto = new Autonomous(drivetrainControls, launcherControls);
-        /*
-         * Tell the driver that initialization is complete.
-         */
-        telemetry.addData("Status", "Initialized");
-        modeButtonDown = false;
+         intake = new Intake(hardwareMap, telemetry);
+         launcher.homeTurret();
+         telemetry.addData("Status", "Initialized");
     }
 
     /*
@@ -68,6 +55,7 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void init_loop() {
+
     }
 
     /*
@@ -75,7 +63,7 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void start() {
-        auto.start();
+
     }
 
     /*
@@ -93,90 +81,41 @@ public class StarterBotTeleop extends OpMode {
          * more complex maneuvers.
          */
         // Sensing
-        boolean newModeButtonDown = gamepad1.y || gamepad2.y;
-        if (modeButtonDown && !newModeButtonDown) {
-            autoMode = !autoMode;
-        }
-        this.modeButtonDown = newModeButtonDown;
+        // This is the global readings.
+        GamePadReadings newGamepadReadings = new GamePadReadings(){{
+            bButton = gamepad1.b || gamepad2.b;
+            aButton = gamepad1.a || gamepad2.a;
+            xButton = gamepad1.x || gamepad2.x;
+            yButton = gamepad1.y || gamepad2.y;
+            leftBumper = gamepad1.left_bumper || gamepad2.left_bumper;
+            rightBumper = gamepad1.right_bumper || gamepad2.right_bumper;
 
-        double intakeSpeed = autoMode ? AUTO_INTAKE_SPEED : readIntakeSpeed(gamepad1, gamepad2);
+            leftStickX = gamepad1.left_stick_x; //Math.max(gamepad1.left_stick_x, gamepad2.left_stick_x);
+            leftStickY = gamepad1.left_stick_y; //Math.max(gamepad1.left_stick_y, gamepad2.left_stick_y);
+            rightStickX = gamepad1.right_stick_x; //Math.max(gamepad1.right_stick_x, gamepad2.right_stick_x);
+            rightStickY = gamepad1.right_stick_y; //Math.max(gamepad1.right_stick_y, gamepad2.right_stick_y);
 
-        // planning
-        if (autoMode && auto.status) {
-            auto.run();
-            if (!auto.status) {
-                autoMode = false;
-            }
-        } else {
-            drivetrainControls = readDrivetrainControls(gamepad1, gamepad2);
-            launcherControls = readLauncherControls(gamepad1, gamepad2);
-        }
-        intake.setPower(intakeSpeed);
-        drivetrain.setPowers(computeDriveTrainPower(drivetrainControls));
-        // execution
-        drivetrain.run();
-        if (autoMode || (gamepad1.leftBumperWasPressed() || gamepad2.leftBumperWasPressed())) {
-            launcher.autoLaunch(launcherControls);
-        } else {
-            launcher.manualLaunch(launcherControls);
-        }
-        intake.spin();
+            leftTrigger = Math.max(gamepad1.left_trigger, gamepad2.left_trigger);
+            rightTrigger = Math.max(gamepad1.right_trigger, gamepad2.right_trigger);
+        }};
+
+        autoMode = Utils.toggle(autoMode, Utils.buttonUp(oldGamePadReadings.yButton, newGamepadReadings.yButton));
+
+        intake.readControls(oldGamePadReadings, newGamepadReadings);
+        launcher.readControls(oldGamePadReadings, newGamepadReadings);
+        drivetrain.readControls(oldGamePadReadings, newGamepadReadings);
+
+        ///  Actions
+        intake.run(autoMode);
+        launcher.run(autoMode);
+        drivetrain.run(autoMode);
 
         /*
          * Show the state and motor powers
          */
+
         telemetry.addData("mode", autoMode);
-        telemetry.addData("status", auto.status);
-        telemetry.addData("trigger", launcherControls.trigger);
-        telemetry.addData("intake", intakeSpeed);
-        telemetry.addData("feederPosition", launcher.getFeederAngle());
-    }
 
-    private double readIntakeSpeed(Gamepad gamepad1, Gamepad gamepad2) {
-        return gamepad1.rightBumperWasPressed() || gamepad2.rightBumperWasPressed() ? 1.0 : Math.max(gamepad1.right_trigger, gamepad2.right_trigger);
-    }
-
-    private DrivetrainControls readDrivetrainControls(Gamepad gamepad1, Gamepad gamepad2) {
-        double x = gamepad1.left_stick_x + gamepad2.left_stick_x;
-        // Notes: stick's y positive direction is pointing down (toward player).
-        double y = -(gamepad1.left_stick_y + gamepad2.left_stick_y);
-        double a = gamepad1.right_stick_x + gamepad2.right_stick_x;
-        return new DrivetrainControls(x, y, a);
-    }
-
-    private LauncherControls readLauncherControls(Gamepad gamepad1, Gamepad gamepad2) {
-        double wheelPress = Math.max(gamepad1.left_trigger, gamepad2.left_trigger);
-        boolean trigger = gamepad1.a || gamepad2.a;
-        return new LauncherControls(wheelPress, trigger);
-    }
-
-    /*
-     * Code to run ONCE after the driver hits STOP
-     */
-    @Override
-    public void stop() {
-    }
-
-
-    private double[] computeDriveTrainPower(DrivetrainControls controls) {
-
-        double frontLeftPower  = controls.translationY - controls.translationX + controls.rotation;
-        double frontRightPower = controls.translationY + controls.translationX - controls.rotation;
-        double rearLeftPower   = controls.translationY + controls.translationX + controls.rotation;
-        double rearRightPower  = controls.translationY - controls.translationX - controls.rotation;
-
-        double maxPower = Math.max(1.0, Math.max(
-                Math.abs(frontLeftPower),
-                Math.max(Math.abs(frontRightPower),
-                        Math.max(Math.abs(rearLeftPower),
-                                Math.abs(rearRightPower)))
-        ));
-
-        frontLeftPower  /= maxPower;
-        frontRightPower /= maxPower;
-        rearRightPower  /= maxPower;
-        rearLeftPower   /= maxPower;
-
-        return new double[]{frontLeftPower, frontRightPower, rearRightPower, rearLeftPower};
+        this.oldGamePadReadings = newGamepadReadings;
     }
 }

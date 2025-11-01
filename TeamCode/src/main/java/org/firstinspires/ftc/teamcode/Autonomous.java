@@ -1,13 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.Utils.Drivetrain;
 import org.firstinspires.ftc.teamcode.Utils.DrivetrainControls;
-import org.firstinspires.ftc.teamcode.Utils.Intake;
-import org.firstinspires.ftc.teamcode.Utils.Launcher;
 import org.firstinspires.ftc.teamcode.Utils.LauncherControls;
 import org.firstinspires.ftc.teamcode.Utils.Task;
 
@@ -60,9 +55,9 @@ public class Autonomous {
 
     public void execute(Task task, boolean stop) {
         if (task.type == Task.TRANSLATE) {
-            drivetrainControls.translationY = stop ? 0 : task.magnitude;
+            drivetrainControls.translationYPower = stop ? 0 : task.magnitude;
         } else if (task.type == Task.ROTATE) {
-            drivetrainControls.rotation = stop ? 0 : task.magnitude;
+            drivetrainControls.rotationPower = stop ? 0 : task.magnitude;
         } else {
             launcherControls.wheelPower = stop ? 0 : task.magnitude;
         }

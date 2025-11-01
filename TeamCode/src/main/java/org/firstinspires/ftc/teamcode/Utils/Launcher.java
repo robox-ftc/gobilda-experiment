@@ -1,12 +1,12 @@
 package org.firstinspires.ftc.teamcode.Utils;
 
-import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.FLOAT;
 
 import static org.firstinspires.ftc.teamcode.Utils.Utils.applyAction;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -14,23 +14,22 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-public class Launcher {
-
-    public static double LAUNCHER_MAX_VELOCITY = 1620;
-    public static double LAUNCHER_MIN_VELOCITY = 1075;
-
-    public static long ERROR_RATE = 324;
-
-    public static double FEEDER_ANGLE_SPAN = 300; // for goblida 2000-2500-0002
+public class Launcher implements IDevice {
+    public static double LAUNCHER_MAX_VELOCITY_RPM = 1620;
+    public static double LAUNCHER_MAX_VELOCITY_DPS = LAUNCHER_MAX_VELOCITY_RPM / 60.0;
+    public static double LAUNCHER_MIN_VELOCITY_RPM = 1075;
+    public static double LAUNCHER_MIN_VELOCITY_DPS = LAUNCHER_MIN_VELOCITY_RPM / 60.0;
+    public static double ERROR_RATE = 0.01;
+    private static final double TURRET_TICKS_PER_REV = 5272.0;  // for GoBILDA  30RPM
+    public static double FEEDER_ANGLE_SPAN = 300.0; // for goblida 2000-2500-0002
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
     private double feederFireAngle;
     private double feederReloadAngle;
-
     public static double FEED_TIME_SECONDS = 0.20; //The feeder servos run this long when a shot is requested.
-    public enum Artifact
-    {
+
+    public enum Artifact {
         Green,
         Purple
     }
@@ -40,46 +39,101 @@ public class Launcher {
         SPIN_UP,
         LAUNCH,
         LAUNCHING,
-        RELOAD,
-        // TODO: add more states, e.g.
+        LAUNCHED,
         ABORTING
     }
 
     public LaunchState launchState = LaunchState.IDLE;
     private DcMotorEx launcherLeft = null;
     private DcMotorEx launcherRight = null;
-    private DcMotorEx[] launchers = new DcMotorEx[2];
+    private DcMotorEx turret = null;
+    private DigitalChannel turretHomeSwitch = null;
     private Servo feeder = null;
 
-    private boolean launching;
-
-    public double targetSpeed;
-    public double targetPower;
+    private double targetSpeed;
     ElapsedTime feederTimer = new ElapsedTime();
     Telemetry telemetry;
 
-    public Launcher(HardwareMap hardwareMap, Telemetry telemetry){
-        launching = false;
+    private LauncherControls controls = new LauncherControls();
+
+    private double[] currentSpeed;
+    private double shooterAngle;
+
+    public Launcher(HardwareMap hardwareMap, Telemetry telemetry) {
         this.telemetry = telemetry;
         initShooter(hardwareMap);
         initFeeder(hardwareMap);
+        initTurret(hardwareMap);
     }
-    public void initShooter(HardwareMap hardwareMap) {
-        launcherLeft = hardwareMap.get(DcMotorEx.class, "left_launcher");
-        launcherRight = hardwareMap.get(DcMotorEx.class, "right_launcher");
 
+    public boolean isTurretHomed() {
+        boolean state = turretHomeSwitch.getState();
+        // Normally Open → false when pressed
+        return !state;
+    }
+
+    public void homeTurret() {
+        while (isTurretHomed()) {
+            turret.setPower(0.5);
+        }
+        Utils.stopAndResetEncoder(turret);
+    }
+
+    public void initTurret(HardwareMap hardwareMap) {
+        turretHomeSwitch = hardwareMap.get(DigitalChannel.class, "turretHomeSwitch");
+        turretHomeSwitch.setMode(DigitalChannel.Mode.INPUT);
+        turret = hardwareMap.get(DcMotorEx.class, "turret");
+    }
+
+    public boolean isLaucherSpeedReady(double targetSpeed, double toleranceRatio, double diffToleranceRatio) {
+        double leftSpeed = launcherLeft.getVelocity(AngleUnit.DEGREES);
+        double rightSpeed = launcherRight.getVelocity(AngleUnit.DEGREES);
+        return Math.abs(leftSpeed = targetSpeed) / targetSpeed < toleranceRatio &&
+                Math.abs(rightSpeed = targetSpeed) / targetSpeed < toleranceRatio &&
+                Math.abs(leftSpeed - rightSpeed) * 2 / (leftSpeed + rightSpeed) < diffToleranceRatio;
+    }
+
+    public void initShooter(HardwareMap hardwareMap) {
+        launcherLeft = hardwareMap.get(DcMotorEx.class, "leftLauncher");
+        launcherRight = hardwareMap.get(DcMotorEx.class, "rightLauncher");
+
+        DcMotorEx[] launchers = new DcMotorEx[2];
         launchers[0] = launcherLeft;
         launchers[1] = launcherRight;
         launcherLeft.setDirection(DcMotor.Direction.REVERSE);
         launcherRight.setDirection(DcMotor.Direction.FORWARD);
 
         // for now, to be changed
-        applyAction(launchers, (motor) -> motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER));
+        applyAction(launchers, (motor) -> motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER));
         applyAction(launchers, (motor) -> motor.setZeroPowerBehavior(FLOAT));
         applyAction(launchers, (motor) -> motor.setPower(0.0));
     }
 
-    public void initFeeder(HardwareMap hardwareMap){
+    public void readControls(GamePadReadings oldReadings, GamePadReadings newReadings)
+    {
+        this.controls.wheelPower = newReadings.leftBumper ? 1.0 : newReadings.leftTrigger;
+        this.controls.triggerDown = oldReadings.aButton;
+        this.controls.fireRequested = Utils.buttonUp(oldReadings.aButton, newReadings.aButton);
+        this.controls.abortRequested = Utils.buttonUp(oldReadings.bButton, newReadings.bButton);
+        // constrain angle from 0 to 1, we want it only goes to one position above the "zero" point.
+        this.controls.turretAngle = 0.5 * (-newReadings.rightStickY + 1);
+
+        telemetry.addData("trigger", this.controls.fireRequested);
+        telemetry.addData("triggerDown", this.controls.triggerDown);
+
+    }
+
+    @Override
+    public void run(boolean autoMode) {
+        if (autoMode){
+            autoLaunch(this.controls);
+        }
+        else{
+            manualLaunch(this.controls);
+        }
+    }
+
+    public void initFeeder(HardwareMap hardwareMap) {
         /*
          * set Feeders to an initial value to initialize the servo controller
          */
@@ -97,81 +151,117 @@ public class Launcher {
         feederTimer = new ElapsedTime();
     }
 
-    public void spin(double power){
-       launcherLeft.setPower(power);
-       launcherRight.setPower(power);
+    public boolean isFeederLaunched() {
+        // adjust the +/- according to servo direction
+        return this.feeder.getPosition() > this.feederFireAngle - 10.0 / FEEDER_ANGLE_SPAN;
     }
 
-    public void stopSpin(){
+    public boolean isFeederReset() {
+        // adjust the +/- according to servo direction
+        return this.feeder.getPosition() < this.feederReloadAngle + 10.0 / FEEDER_ANGLE_SPAN;
+    }
+
+    public void spin(double power) {
+        launcherLeft.setPower(power);
+        launcherRight.setPower(power);
+    }
+
+    public void spinToVelociy(double targetSpeedDPS) // degree per second
+    {
+
+    }
+
+    public void stopSpin() {
         launcherLeft.setPower(STOP_SPEED);
         launcherRight.setPower(STOP_SPEED);
     }
 
-    public void fire(){
+    public void fire() {
         feeder.setPosition(this.feederFireAngle);
     }
 
-    public void reload(){
+    public void resetFeeder() {
         feeder.setPosition(this.feederReloadAngle);
     }
 
-    public double getFeederAngle(){
+    public double getFeederAngle() {
         return feeder.getPosition();
     }
 
     public void autoLaunch(LauncherControls controls) {
-        double power = controls.wheelPower;
-        if (power > 0) {
-            spin(power);
-            if (!launching) {
-                launching = true;
-            } else if (launcherLeft.getVelocity(AngleUnit.DEGREES) >= LAUNCHER_MAX_VELOCITY - ERROR_RATE) {
-                fire();
-                launching = false;
-            }
-        } else {
-            launching = false;
-            reload();
-        }
-    }
-    public void manualLaunch(LauncherControls controls) {
-        spin(controls.wheelPower);
-        if (controls.trigger)
-            fire();
+        if (controls.abortRequested)
+            abort();
         else
-            reload();
+            launch(controls.fireRequested);
     }
 
-    public void launch(boolean shotRequested) {
+    public void manualLaunch(LauncherControls controls) {
+        spin(controls.wheelPower);
+        if (controls.triggerDown)
+            fire();
+        else
+            resetFeeder();
+    }
+
+    public void Aim() {
+    }
+
+    public boolean isAimed() {
+        return true;
+    }
+
+    public boolean isFeederLoaded() {
+        return true;
+    }
+
+    public void ReloadAmmo()
+    {
+    }
+
+    public void abort() {
+        stopSpin();
+        resetFeeder();
+        launchState = LaunchState.IDLE;
+    }
+
+    public double calculateSpeed()
+    {
+        return 1.0;
+    }
+
+    public void launch(boolean fireRequested) {
         switch (launchState) {
             case IDLE:
-                if (shotRequested) {
+                if (fireRequested) {
+                    Aim(); // when implement, sending command to other devices to aim and reload but dont wait.
+                    ReloadAmmo();
                     launchState = LaunchState.SPIN_UP;
+
+                    this.targetSpeed = calculateSpeed();
                 }
                 break;
-            case SPIN_UP:
-                spin(this.targetPower);
-                if (launcherLeft.getVelocity() >= this.targetSpeed) {
+            case SPIN_UP: // For idempotent actions, we can let the machine re enter the same state and check
+                spinToVelociy(this.targetSpeed);
+                if (isLaucherSpeedReady(this.targetSpeed, 0.9, 0.1)
+                    && isAimed() && isFeederLoaded())
                     launchState = LaunchState.LAUNCH;
-                }
                 break;
             case LAUNCH:
                 fire();
                 feederTimer.reset();
-                launchState = LaunchState.LAUNCHING;
+                if (isFeederLaunched()) {
+                    resetFeeder();
+                    launchState = LaunchState.LAUNCHING;
+                }
                 break;
             case LAUNCHING:
-                if (feederTimer.seconds() > FEED_TIME_SECONDS) {
-                    reload();
-                    stopSpin();
-                    launchState = LaunchState.RELOAD;
-                    feederTimer.reset();
-                }
+                if (feederTimer.seconds() > FEED_TIME_SECONDS)
+                    launchState = LaunchState.LAUNCHED;
                 break;
-            case RELOAD:
-                if (feederTimer.seconds() > FEED_TIME_SECONDS) {
+            case LAUNCHED:
+                if (isFeederReset())
                     launchState = LaunchState.IDLE;
-                }
+                stopSpin();
                 break;
             default: {
                 break;

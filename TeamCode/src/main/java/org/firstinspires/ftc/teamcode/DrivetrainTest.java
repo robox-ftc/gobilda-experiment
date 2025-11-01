@@ -7,9 +7,6 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.teamcode.Utils.Drivetrain;
 import org.firstinspires.ftc.teamcode.Utils.DrivetrainControls;
-import org.firstinspires.ftc.teamcode.Utils.Intake;
-import org.firstinspires.ftc.teamcode.Utils.Launcher;
-import org.firstinspires.ftc.teamcode.Utils.LauncherControls;
 
 @TeleOp(name = "DriveTest", group = "Robot")
 //@Disabled
@@ -18,7 +15,7 @@ public class DrivetrainTest extends OpMode {
 
 
     public void init() {
-        drivetrain = new Drivetrain(hardwareMap);
+        drivetrain = new Drivetrain(hardwareMap, telemetry);
     }
 
     public void loop() {
@@ -27,8 +24,9 @@ public class DrivetrainTest extends OpMode {
         double[] drivetrainPowers = computeDriveTrainPower(drivetrainControls);
         this.drivetrain.setPowers(drivetrainPowers);
 
-        drivetrain.run();
+        drivetrain.run(false);
     }
+
     private DrivetrainControls readDrivetrainControls(Gamepad gamepad1, Gamepad gamepad2) {
         double x = gamepad1.left_stick_x + gamepad2.left_stick_x;
         double y = -(gamepad1.left_stick_y + gamepad2.left_stick_y);
@@ -38,10 +36,10 @@ public class DrivetrainTest extends OpMode {
 
     private double[] computeDriveTrainPower(DrivetrainControls controls) {
 
-        double frontLeftPower  = controls.translationY + controls.translationX + controls.rotation;
-        double frontRightPower = controls.translationY - controls.translationX - controls.rotation;
-        double rearLeftPower   = controls.translationY - controls.translationX + controls.rotation;
-        double rearRightPower  = controls.translationY + controls.translationX - controls.rotation;
+        double frontLeftPower  = controls.translationYPower + controls.translationXPower + controls.rotationPower;
+        double frontRightPower = controls.translationYPower - controls.translationXPower - controls.rotationPower;
+        double rearLeftPower   = controls.translationYPower - controls.translationXPower + controls.rotationPower;
+        double rearRightPower  = controls.translationYPower + controls.translationXPower - controls.rotationPower;
 
         double maxPower = Math.max(1.0, Math.max(
                 Math.abs(frontLeftPower),
