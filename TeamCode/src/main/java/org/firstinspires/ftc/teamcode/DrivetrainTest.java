@@ -158,11 +158,10 @@ public class DrivetrainTest extends OpMode {
 
 
     private double[] computeDriveTrainPower(DrivetrainControls controls) {
-
-        double frontLeftPower  = controls.translationY - controls.translationX + controls.rotation;
-        double frontRightPower = controls.translationY + controls.translationX - controls.rotation;
-        double rearLeftPower   = controls.translationY + controls.translationX + controls.rotation;
-        double rearRightPower  = controls.translationY - controls.translationX - controls.rotation;
+        double frontLeftPower  = controls.translationY + controls.translationX - controls.rotation;
+        double frontRightPower = controls.translationY - controls.translationX + controls.rotation;
+        double rearLeftPower   = controls.translationY - controls.translationX - controls.rotation;
+        double rearRightPower  = controls.translationY + controls.translationX + controls.rotation;
 
         double maxPower = Math.max(1.0, Math.max(
                 Math.abs(frontLeftPower),

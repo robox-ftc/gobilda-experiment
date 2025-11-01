@@ -42,7 +42,7 @@ public class Autonomous {
         switch (flag) {
             case A:
                 queue.add(new Task(2000, 4000, 1, Task.TRANSLATE));
-                queue.add(new Task(3250, 3500, 0.5, Task.ROTATE));
+                queue.add(new Task(3250, 3500, 0.25, Task.ROTATE));
             case B:
                 queue.add(new Task(2000, 3000, 1, Task.TRANSLATE));
                 queue.add(new Task(3000, 3750, 1, Task.ROTATE));
