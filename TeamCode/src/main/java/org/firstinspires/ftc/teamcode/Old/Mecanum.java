@@ -296,7 +296,7 @@ public class Mecanum extends LinearOpMode {
              * sometimes
              * intake and wrist) to match. For example, if we click the right bumper we want
              * the robot
-             * to start collecting. So it moves the armPosition to the ARM_COLLECT position,
+             * to init collecting. So it moves the armPosition to the ARM_COLLECT position,
              * it folds out the wrist to make sure it is in the correct orientation to
              * intake, and it
              * turns the intake on to the COLLECT mode.

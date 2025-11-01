@@ -68,6 +68,15 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void init_loop() {
+        if (gamepad1.aWasPressed() || gamepad2.aWasPressed()) {
+            auto.init(Autonomous.A);
+        } else if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) {
+            auto.init(Autonomous.B);
+        } else if (gamepad1.xWasPressed() || gamepad2.xWasPressed()) {
+            auto.init(Autonomous.X);
+        } else if (gamepad1.yWasPressed() || gamepad2.yWasPressed()) {
+            auto.init(Autonomous.Y);
+        }
     }
 
     /*
@@ -160,10 +169,10 @@ public class StarterBotTeleop extends OpMode {
 
     private double[] computeDriveTrainPower(DrivetrainControls controls) {
 
-        double frontLeftPower  = controls.translationY - controls.translationX + controls.rotation;
-        double frontRightPower = controls.translationY + controls.translationX - controls.rotation;
-        double rearLeftPower   = controls.translationY + controls.translationX + controls.rotation;
-        double rearRightPower  = controls.translationY - controls.translationX - controls.rotation;
+        double frontLeftPower  = controls.translationY + controls.translationX + controls.rotation;
+        double frontRightPower = controls.translationY - controls.translationX - controls.rotation;
+        double rearLeftPower   = controls.translationY - controls.translationX + controls.rotation;
+        double rearRightPower  = controls.translationY + controls.translationX - controls.rotation;
 
         double maxPower = Math.max(1.0, Math.max(
                 Math.abs(frontLeftPower),

@@ -56,7 +56,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
  * starting position.
  *
  * Make super sure that the arm is reset into the robot, and the wrist is folded in before
- * you run start the OpMode. The motor's encoder is "relative" and will move the number of degrees
+ * you run init the OpMode. The motor's encoder is "relative" and will move the number of degrees
  * you request it to based on the starting position. So if it starts too high, all the motor
  * setpoints will be wrong.
  *
@@ -102,9 +102,9 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
 
     /*
      * These constants hold the position that the arm is commanded to run to.
-     * These are relative to where the arm was located when you start the OpMode. So
+     * These are relative to where the arm was located when you init the OpMode. So
      * make sure the
-     * arm is reset to collapsed inside the robot before you start the program.
+     * arm is reset to collapsed inside the robot before you init the program.
      * 
      * In these variables you'll see a number in degrees, multiplied by the ticks
      * per degree of the arm.
@@ -291,7 +291,7 @@ public class ConceptTeleop_DoubleController extends LinearOpMode {
              * sometimes
              * intake and wrist) to match. For example, if we click the right bumper we want
              * the robot
-             * to start collecting. So it moves the armPosition to the ARM_COLLECT position,
+             * to init collecting. So it moves the armPosition to the ARM_COLLECT position,
              * it folds out the wrist to make sure it is in the correct orientation to
              * intake, and it
              * turns the intake on to the COLLECT mode.

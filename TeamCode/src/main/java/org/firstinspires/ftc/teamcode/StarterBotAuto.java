@@ -209,7 +209,7 @@ public class StarterBotAuto extends OpMode
         rightDrive.setDirection(DcMotor.Direction.FORWARD);
 
         /*
-         * Here we reset the encoders on our drive motors before we start moving.
+         * Here we reset the encoders on our drive motors before we init moving.
          */
         leftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         rightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -300,7 +300,7 @@ public class StarterBotAuto extends OpMode
             /*
              * Since the first state of our auto is LAUNCH, this is the first "case" we encounter.
              * This case is very simple. We call our .launch() function with "true" in the parameter.
-             * This "true" value informs our launch function that we'd like to start the process of
+             * This "true" value informs our launch function that we'd like to init the process of
              * firing a shot. We will call this function with a "false" in the next case. This
              * "false" condition means that we are continuing to call the function every loop,
              * allowing it to cycle through and continue the process of launching the first ball.
