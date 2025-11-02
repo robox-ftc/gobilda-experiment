@@ -14,6 +14,9 @@ public class GamePadReadings {
     public boolean xButton;
     public boolean yButton;
 
+    public boolean dPadUp;
+    public boolean dPadDown;
+
     public double leftTrigger;
     public double rightTrigger;
 }

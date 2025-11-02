@@ -4,11 +4,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.util.ElapsedTime;
-
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 public class Utils {
 
@@ -70,7 +66,6 @@ public class Utils {
     public static void stopAndResetEncoder(DcMotorEx motor) {
         motor.setPower(0);
         motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
     }
 
     public static boolean buttonUp(boolean oldButtonState, boolean newButtonState){

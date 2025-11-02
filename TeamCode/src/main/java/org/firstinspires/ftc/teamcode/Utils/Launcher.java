@@ -13,6 +13,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 public class Launcher implements IDevice {
     public static double LAUNCHER_MAX_VELOCITY_RPM = 1620;
@@ -57,9 +58,6 @@ public class Launcher implements IDevice {
 
     private LauncherControls controls = new LauncherControls();
 
-    private double[] currentSpeed;
-    private double shooterAngle;
-
     public Launcher(HardwareMap hardwareMap, Telemetry telemetry) {
         this.telemetry = telemetry;
         initShooter(hardwareMap);
@@ -68,33 +66,36 @@ public class Launcher implements IDevice {
     }
 
     public boolean isTurretHomed() {
-        return turretHomeSwitch.getState();
+        boolean switchStatus =  !turretHomeSwitch.getState();
+        this.telemetry.addData("Turret limit switch state", switchStatus);
+        return switchStatus;
     }
 
-    public void homeTurret() {
-        while (!isTurretHomed()) {
-            turret.setPower(1);
-            try {
-                Thread.sleep(500);
-            }
-            catch(Exception e){
-                ;
-            }
+    // To be called in init_loop
+    public void homeTurretInitLoop() {
+        boolean isHomed = isTurretHomed();
+        if (!isHomed) {
+            telemetry.addData("Turret Homed", isHomed);
+            turret.setPower(-1.0);
         }
-        Utils.stopAndResetEncoder(turret);
+        else{
+            Utils.stopAndResetEncoder(turret);
+            telemetry.addData("Turret position:", turret.getCurrentPosition()/TURRET_TICKS_PER_DEGREE);
+        }
     }
 
     public void initTurret(HardwareMap hardwareMap) {
         turretHomeSwitch = hardwareMap.get(DigitalChannel.class, "turretHomeSwitch");
         turretHomeSwitch.setMode(DigitalChannel.Mode.INPUT);
         turret = hardwareMap.get(DcMotorEx.class, "turret");
+        turret.setZeroPowerBehavior(FLOAT); // Do not need to break; The gear can be self-locked.
     }
 
     public boolean isLaucherSpeedReady(double targetSpeed, double toleranceRatio, double diffToleranceRatio) {
         double leftSpeed = launcherLeft.getVelocity(AngleUnit.DEGREES);
         double rightSpeed = launcherRight.getVelocity(AngleUnit.DEGREES);
-        return Math.abs(leftSpeed = targetSpeed) / targetSpeed < toleranceRatio &&
-                Math.abs(rightSpeed = targetSpeed) / targetSpeed < toleranceRatio &&
+        return Math.abs(leftSpeed - targetSpeed) / targetSpeed < toleranceRatio &&
+                Math.abs(rightSpeed - targetSpeed) / targetSpeed < toleranceRatio &&
                 Math.abs(leftSpeed - rightSpeed) * 2 / (leftSpeed + rightSpeed) < diffToleranceRatio;
     }
 
@@ -121,12 +122,10 @@ public class Launcher implements IDevice {
         this.controls.fireRequested = Utils.buttonUp(oldReadings.aButton, newReadings.aButton);
         this.controls.abortRequested = Utils.buttonUp(oldReadings.bButton, newReadings.bButton);
         // constrain angle from 0 to 1, we want it only goes to one position above the "zero" point.
-        this.controls.turretAngle = 0.5 * (-newReadings.rightStickY + 1);
+        this.controls.turretPower = (newReadings.dPadUp ? 1 : 0)* 1.0 - (newReadings.dPadDown ? 1: 0)*1.0;
 
-        telemetry.addData("switch State",  this.turretHomeSwitch.getState());
         telemetry.addData("trigger", this.controls.fireRequested);
         telemetry.addData("triggerDown", this.controls.triggerDown);
-        telemetry.addData("launcherSpeed", (launcherLeft.getVelocity() + launcherRight.getVelocity()) / 2);
     }
 
     @Override
@@ -143,7 +142,6 @@ public class Launcher implements IDevice {
         /*
          * set Feeders to an initial value to initialize the servo controller
          */
-        telemetry.addLine("init feeder");
         feeder = hardwareMap.get(Servo.class, "feeder");
 
         // The following setting depends on your hardware mountings.
@@ -151,8 +149,6 @@ public class Launcher implements IDevice {
         this.feederFireAngle = this.feederReloadAngle - 75.0 / FEEDER_ANGLE_SPAN;
         feeder.resetDeviceConfigurationForOpMode();
         feeder.setPosition(feederReloadAngle);
-        telemetry.addLine("init position" + feeder.getPosition());
-        telemetry.addLine("range=" + this.feederReloadAngle + ", " + this.feederFireAngle);
 
         feederTimer = new ElapsedTime();
     }
@@ -172,9 +168,10 @@ public class Launcher implements IDevice {
         launcherRight.setPower(power);
     }
 
-    public void spinToVelociy(double targetSpeedDPS) // degree per second
+    public void spinToVelocity(double targetSpeedDPS) // degree per second
     {
-
+        launcherLeft.setVelocity(targetSpeedDPS);
+        launcherRight.setVelocity(targetSpeedDPS);
     }
 
     public void stopSpin() {
@@ -202,10 +199,14 @@ public class Launcher implements IDevice {
     }
 
     public void manualLaunch(LauncherControls controls) {
-        int turretDegree = (int)(45 * controls.turretAngle * TURRET_TICKS_PER_DEGREE);
-        turret.setTargetPosition(turretDegree);
-        telemetry.addData("Angle and power and dps", "" + turretDegree + " " + controls.wheelPower + " " +
-                this.launcherRight.getVelocity(AngleUnit.DEGREES) + " " + this.launcherLeft.getVelocity(AngleUnit.DEGREES));
+        telemetry.addData("t power", controls.turretPower);
+        if (isTurretHomed() && controls.turretPower < 0){
+            turret.setPower(0);
+        }
+        else{
+            turret.setPower((controls.turretPower));
+        }
+
         spin(controls.wheelPower);
         if (controls.triggerDown)
             fire();
@@ -236,7 +237,10 @@ public class Launcher implements IDevice {
 
     public double calculateSpeed()
     {
-        return 1.0;
+        // 1500 rpm to dps
+        double dps = 1500 * 60;
+        telemetry.addData("target roller dps", dps);
+        return dps;
     }
 
     public void launch(boolean fireRequested) {
@@ -246,12 +250,11 @@ public class Launcher implements IDevice {
                     Aim(); // when implement, sending command to other devices to aim and reload but dont wait.
                     ReloadAmmo();
                     launchState = LaunchState.SPIN_UP;
-
                     this.targetSpeed = calculateSpeed();
                 }
                 break;
             case SPIN_UP: // For idempotent actions, we can let the machine re enter the same state and check
-                spinToVelociy(this.targetSpeed);
+                spinToVelocity(this.targetSpeed);
                 if (isLaucherSpeedReady(this.targetSpeed, 0.9, 0.1)
                     && isAimed() && isFeederLoaded())
                     launchState = LaunchState.LAUNCH;

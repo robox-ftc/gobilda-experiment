@@ -46,7 +46,6 @@ public class StarterBotTeleop extends OpMode {
          drivetrain = new Drivetrain(hardwareMap, telemetry);
          launcher = new Launcher(hardwareMap, telemetry);
          intake = new Intake(hardwareMap, telemetry);
-         launcher.homeTurret();
          telemetry.addData("Status", "Initialized");
     }
 
@@ -55,7 +54,7 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void init_loop() {
-
+        //launcher.homeTurretInitLoop();
     }
 
     /*
@@ -90,16 +89,20 @@ public class StarterBotTeleop extends OpMode {
             leftBumper = gamepad1.left_bumper || gamepad2.left_bumper;
             rightBumper = gamepad1.right_bumper || gamepad2.right_bumper;
 
-            leftStickX = gamepad1.left_stick_x; //Math.max(gamepad1.left_stick_x, gamepad2.left_stick_x);
-            leftStickY = gamepad1.left_stick_y; //Math.max(gamepad1.left_stick_y, gamepad2.left_stick_y);
-            rightStickX = gamepad1.right_stick_x; //Math.max(gamepad1.right_stick_x, gamepad2.right_stick_x);
-            rightStickY = gamepad1.right_stick_y; //Math.max(gamepad1.right_stick_y, gamepad2.right_stick_y);
+            leftStickX = gamepad1.left_stick_x;
+            leftStickY = gamepad1.left_stick_y;
+            rightStickX = gamepad1.right_stick_x;
+            rightStickY = gamepad1.right_stick_y;
 
             leftTrigger = Math.max(gamepad1.left_trigger, gamepad2.left_trigger);
             rightTrigger = Math.max(gamepad1.right_trigger, gamepad2.right_trigger);
+
+            dPadUp = gamepad1.dpad_up || gamepad2.dpad_up;
+            dPadDown = gamepad1.dpad_down || gamepad2.dpad_down;
         }};
 
         autoMode = Utils.toggle(autoMode, Utils.buttonUp(oldGamePadReadings.yButton, newGamepadReadings.yButton));
+        telemetry.addData("mode", autoMode);
 
         intake.readControls(oldGamePadReadings, newGamepadReadings);
         launcher.readControls(oldGamePadReadings, newGamepadReadings);
@@ -109,12 +112,6 @@ public class StarterBotTeleop extends OpMode {
         intake.run(autoMode);
         launcher.run(autoMode);
         drivetrain.run(autoMode);
-
-        /*
-         * Show the state and motor powers
-         */
-
-        telemetry.addData("mode", autoMode);
 
         this.oldGamePadReadings = newGamepadReadings;
     }

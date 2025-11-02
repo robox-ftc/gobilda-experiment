@@ -5,14 +5,14 @@ public class LauncherControls
     public double wheelPower;
     public boolean fireRequested;
     public boolean triggerDown;
-    public double turretAngle;
+    public double turretPower;
     public boolean abortRequested;
 
     public LauncherControls(){
         this.wheelPower = 0;
         this.fireRequested = false;
         this.triggerDown = false;
-        this.turretAngle = 0.0;
+        this.turretPower = 0.0;
         this.abortRequested = false;
     }
 }
