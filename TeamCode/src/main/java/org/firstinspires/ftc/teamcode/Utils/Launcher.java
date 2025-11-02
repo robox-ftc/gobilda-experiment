@@ -20,7 +20,8 @@ public class Launcher implements IDevice {
     public static double LAUNCHER_MIN_VELOCITY_RPM = 1075;
     public static double LAUNCHER_MIN_VELOCITY_DPS = LAUNCHER_MIN_VELOCITY_RPM / 60.0;
     public static double ERROR_RATE = 0.01;
-    private static final double TURRET_TICKS_PER_REV = 5272.0;  // for GoBILDA  30RPM
+    private static final double TURRET_TICKS_PER_REV = 5272.0; // for GoBILDA  30RPM
+    private static final double TURRET_TICKS_PER_DEGREE = 5272.0/360;
     public static double FEEDER_ANGLE_SPAN = 300.0; // for goblida 2000-2500-0002
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
@@ -67,14 +68,18 @@ public class Launcher implements IDevice {
     }
 
     public boolean isTurretHomed() {
-        boolean state = turretHomeSwitch.getState();
-        // Normally Open → false when pressed
-        return !state;
+        return turretHomeSwitch.getState();
     }
 
     public void homeTurret() {
-        while (isTurretHomed()) {
-            turret.setPower(0.5);
+        while (!isTurretHomed()) {
+            turret.setPower(1);
+            try {
+                Thread.sleep(500);
+            }
+            catch(Exception e){
+                ;
+            }
         }
         Utils.stopAndResetEncoder(turret);
     }
@@ -118,9 +123,10 @@ public class Launcher implements IDevice {
         // constrain angle from 0 to 1, we want it only goes to one position above the "zero" point.
         this.controls.turretAngle = 0.5 * (-newReadings.rightStickY + 1);
 
+        telemetry.addData("switch State",  this.turretHomeSwitch.getState());
         telemetry.addData("trigger", this.controls.fireRequested);
         telemetry.addData("triggerDown", this.controls.triggerDown);
-
+        telemetry.addData("launcherSpeed", (launcherLeft.getVelocity() + launcherRight.getVelocity()) / 2);
     }
 
     @Override
@@ -196,6 +202,10 @@ public class Launcher implements IDevice {
     }
 
     public void manualLaunch(LauncherControls controls) {
+        int turretDegree = (int)(45 * controls.turretAngle * TURRET_TICKS_PER_DEGREE);
+        turret.setTargetPosition(turretDegree);
+        telemetry.addData("Angle and power and dps", "" + turretDegree + " " + controls.wheelPower + " " +
+                this.launcherRight.getVelocity(AngleUnit.DEGREES) + " " + this.launcherLeft.getVelocity(AngleUnit.DEGREES));
         spin(controls.wheelPower);
         if (controls.triggerDown)
             fire();
