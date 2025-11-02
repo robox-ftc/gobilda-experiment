@@ -11,6 +11,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
+import java.util.Arrays;
+
 public class Drivetrain implements IDevice {
 
     // Declare OpMode members.
@@ -54,7 +56,7 @@ public class Drivetrain implements IDevice {
     public void run(boolean autoMode){
         // For now we only implemented non-auto mode.
         setPowers(computeDriveTrainPower(this.controls));
-        this.telemetry.addData("dr pwr", this.targetPowers);
+        this.telemetry.addData("dr pwr", Arrays.toString(this.targetPowers));
         applyActions(driveMotors, (motor, i) -> motor.setPower(this.targetPowers[i]));
     }
 
@@ -67,10 +69,10 @@ public class Drivetrain implements IDevice {
     }
 
     private double[] computeDriveTrainPower(DrivetrainControls controls) {
-        double frontLeftPower  = controls.translationYPower - controls.translationXPower + controls.rotationPower;
-        double frontRightPower = controls.translationYPower + controls.translationXPower - controls.rotationPower;
-        double rearLeftPower   = controls.translationYPower + controls.translationXPower + controls.rotationPower;
-        double rearRightPower  = controls.translationYPower - controls.translationXPower - controls.rotationPower;
+        double frontLeftPower  = controls.translationYPower + controls.translationXPower + controls.rotationPower;
+        double frontRightPower = controls.translationYPower - controls.translationXPower - controls.rotationPower;
+        double rearLeftPower   = controls.translationYPower - controls.translationXPower + controls.rotationPower;
+        double rearRightPower  = controls.translationYPower + controls.translationXPower - controls.rotationPower;
 
         double maxPower = Math.max(1.0, Math.max(
                 Math.abs(frontLeftPower),
