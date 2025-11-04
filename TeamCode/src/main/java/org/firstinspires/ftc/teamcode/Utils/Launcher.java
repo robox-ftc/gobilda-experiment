@@ -13,14 +13,13 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 public class Launcher implements IDevice {
     public static double LAUNCHER_MAX_VELOCITY_RPM = 1620;
     public static double LAUNCHER_MAX_VELOCITY_DPS = LAUNCHER_MAX_VELOCITY_RPM / 60.0;
     public static double LAUNCHER_MIN_VELOCITY_RPM = 1075;
     public static double LAUNCHER_MIN_VELOCITY_DPS = LAUNCHER_MIN_VELOCITY_RPM / 60.0;
-    public static double ERROR_RATE = 0.01;
+    public static double ERROR_RATE = 0.1;
     private static final double TURRET_TICKS_PER_REV = 5272.0; // for GoBILDA  30RPM
     private static final double TURRET_TICKS_PER_DEGREE = 5272.0/360;
     public static double FEEDER_ANGLE_SPAN = 300.0; // for goblida 2000-2500-0002
@@ -52,11 +51,11 @@ public class Launcher implements IDevice {
     private DigitalChannel turretHomeSwitch = null;
     private Servo feeder = null;
 
-    private double targetSpeed;
+    public double targetSpeed;
     ElapsedTime feederTimer = new ElapsedTime();
     Telemetry telemetry;
 
-    private LauncherControls controls = new LauncherControls();
+    public LauncherControls controls = new LauncherControls();
 
     public Launcher(HardwareMap hardwareMap, Telemetry telemetry) {
         this.telemetry = telemetry;
@@ -88,10 +87,11 @@ public class Launcher implements IDevice {
         turretHomeSwitch = hardwareMap.get(DigitalChannel.class, "turretHomeSwitch");
         turretHomeSwitch.setMode(DigitalChannel.Mode.INPUT);
         turret = hardwareMap.get(DcMotorEx.class, "turret");
+        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setZeroPowerBehavior(FLOAT); // Do not need to break; The gear can be self-locked.
     }
 
-    public boolean isLaucherSpeedReady(double targetSpeed, double toleranceRatio, double diffToleranceRatio) {
+    public boolean isLauncherSpeedReady(double targetSpeed, double toleranceRatio, double diffToleranceRatio) {
         double leftSpeed = launcherLeft.getVelocity(AngleUnit.DEGREES);
         double rightSpeed = launcherRight.getVelocity(AngleUnit.DEGREES);
         return Math.abs(leftSpeed - targetSpeed) / targetSpeed < toleranceRatio &&
@@ -122,7 +122,7 @@ public class Launcher implements IDevice {
         this.controls.fireRequested = Utils.buttonUp(oldReadings.aButton, newReadings.aButton);
         this.controls.abortRequested = Utils.buttonUp(oldReadings.bButton, newReadings.bButton);
         // constrain angle from 0 to 1, we want it only goes to one position above the "zero" point.
-        this.controls.turretPower = (newReadings.dPadUp ? 1 : 0)* 1.0 - (newReadings.dPadDown ? 1: 0)*1.0;
+        this.controls.turretPower = (newReadings.dPadUp ? 1 : 0) - (newReadings.dPadDown ? 1 : 0);
 
         telemetry.addData("trigger", this.controls.fireRequested);
         telemetry.addData("triggerDown", this.controls.triggerDown);
@@ -179,8 +179,8 @@ public class Launcher implements IDevice {
         launcherRight.setPower(STOP_SPEED);
     }
 
-    public void fire() {
-        feeder.setPosition(this.feederFireAngle);
+    public void fire(double length) {
+        feeder.setPosition(this.feederFireAngle * length);
     }
 
     public void resetFeeder() {
@@ -209,7 +209,7 @@ public class Launcher implements IDevice {
 
         spin(controls.wheelPower);
         if (controls.triggerDown)
-            fire();
+            fire(calculateAngle());
         else
             resetFeeder();
     }
@@ -239,6 +239,9 @@ public class Launcher implements IDevice {
     {
         // 1500 rpm to dps
         double dps = 1500 * 60;
+        if (controls.turretPower == 1) {
+            dps *= 0.8;
+        }
         telemetry.addData("target roller dps", dps);
         return dps;
     }
@@ -255,12 +258,12 @@ public class Launcher implements IDevice {
                 break;
             case SPIN_UP: // For idempotent actions, we can let the machine re enter the same state and check
                 spinToVelocity(this.targetSpeed);
-                if (isLaucherSpeedReady(this.targetSpeed, 0.9, 0.1)
+                if (isLauncherSpeedReady(this.targetSpeed, 0.9, ERROR_RATE)
                     && isAimed() && isFeederLoaded())
                     launchState = LaunchState.LAUNCH;
                 break;
             case LAUNCH:
-                fire();
+                fire(calculateAngle());
                 feederTimer.reset();
                 if (isFeederLaunched()) {
                     resetFeeder();
@@ -279,6 +282,14 @@ public class Launcher implements IDevice {
             default: {
                 break;
             }
+        }
+    }
+
+    private double calculateAngle() {
+        if (controls.turretPower == 1) {
+            return 1;
+        } else {
+            return 0.8;
         }
     }
 }
