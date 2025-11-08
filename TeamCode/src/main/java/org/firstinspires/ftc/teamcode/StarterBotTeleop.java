@@ -43,7 +43,7 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void init() {
-         drivetrain = new Drivetrain(hardwareMap, telemetry);
+         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
          launcher = new Launcher(hardwareMap, telemetry);
          intake = new Intake(hardwareMap, telemetry);
          telemetry.addData("Status", "Initialized");

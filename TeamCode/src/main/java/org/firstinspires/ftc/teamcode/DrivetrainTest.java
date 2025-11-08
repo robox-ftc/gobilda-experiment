@@ -15,7 +15,7 @@ public class DrivetrainTest extends OpMode {
 
 
     public void init() {
-        drivetrain = new Drivetrain(hardwareMap, telemetry);
+        drivetrain = new Drivetrain(hardwareMap, telemetry, false);
     }
 
     public void loop() {

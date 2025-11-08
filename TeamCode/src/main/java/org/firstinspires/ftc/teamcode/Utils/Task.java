@@ -7,18 +7,18 @@ public class Task {
     public static final int LAUNCH = 2;
     public int begin;
     public int end;
-    public double magnitude;
     public int type;
+    public int target;
 
     public Task() {}
-    public Task(double magnitude, int type) {
-        this.magnitude = magnitude;
+    public Task(int target, int type) {
         this.type = type;
+        this.target = target;
     }
-    public Task(int begin, int end, double magnitude, int type) {
+    public Task(int begin, int end, int type, int target) {
         this.begin = begin;
         this.end = end;
-        this.magnitude = magnitude;
         this.type = type;
+        this.target = target;
     }
 }
