@@ -200,7 +200,6 @@ public class StarterBotAuto extends OpMode {
         AIM,
         PREPARE,
         LAUNCH,
-        LAUNCHING,
     }
 
     /*
