@@ -61,7 +61,6 @@ import java.util.Locale;
 @TeleOp(name = "StarterBotTeleopMecanums", group = "StarterBot")
 // @Disabled
 public class StarterBotTeleopMecanums extends StarterBotAuto {
-    final double FEED_TIME_SECONDS = 0.50; // The feeder servos run this long when a shot is requested.
     final double STOP_SPEED = 0.0; // We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
@@ -70,8 +69,6 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
     double rightFrontPower;
     double leftBackPower;
     double rightBackPower;
-
-    double launcherSpeed;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -83,6 +80,7 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
         rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        TIME_BETWEEN_SHOTS = 0;
     }
 
     /*
@@ -128,6 +126,8 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
                     pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
         }
 
+        targetTag = locateTarget(targetTagId);
+
         mecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x,
                 reverseRotate ? -gamepad1.right_stick_x : gamepad1.right_stick_x);
 
@@ -146,13 +146,17 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
             }
         }
 
+        if (gamepad1.start) {
+            aim(1);
+        }
+
         /*
          * Now we call our "Launch" function.
          */
         if (!drivetrainOnly) {
-            launch_manual(gamepad1.rightBumperWasPressed(), LAUNCHER_TARGET_VELOCITY_2);
-            launch_manual(gamepad1.xWasPressed(), LAUNCHER_TARGET_VELOCITY_1);
-            launch_manual(gamepad1.aWasPressed(), LAUNCHER_TARGET_VELOCITY_3);
+            launch(gamepad1.rightBumperWasPressed(), LAUNCHER_TARGET_VELOCITY_2);
+            launch(gamepad1.xWasPressed(), LAUNCHER_TARGET_VELOCITY_1);
+            launch(gamepad1.aWasPressed(), LAUNCHER_TARGET_VELOCITY_3);
 
             frontIntakeWheel.setPower(-gamepad1.left_trigger);
             if (gamepad1.dpad_up || gamepad1.dpad_down) {
@@ -170,17 +174,21 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
         /*
          * Show the state and motor powers
          */
-        telemetry.addData("State", launchState);
-        if (!drivetrainOnly)
-
-        {
+        telemetry.addData("Team", alliance);
+        telemetry.addData("LauncherState", launchState);
+        if (targetTag != null) {
+            telemetry.addData("Tag Location",
+                    String.format(Locale.US, "{X: %.3f, Y: %.3f}", targetTag.ftcPose.x, targetTag.ftcPose.y));
+        }
+        if (!drivetrainOnly) {
             telemetry.addData("motorSpeed", "left (%.0f), right (%.0f)", launchers[0].getVelocity(),
                     launchers[1].getVelocity());
         }
-        telemetry.addData("LauncherState", launchState);
-        telemetry.addData("Motor Current Positions", "left (%d), right (%d)", leftFrontDrive.getCurrentPosition(),
+        telemetry.addData("Motor Current Positions", "left (%d), right (%d)",
+                leftFrontDrive.getCurrentPosition(),
                 rightFrontDrive.getCurrentPosition());
-        telemetry.addData("Motor Target Positions", "left (%d), right (%d)", leftFrontDrive.getTargetPosition(),
+        telemetry.addData("Motor Target Positions", "left (%d), right (%d)",
+                leftFrontDrive.getTargetPosition(),
                 rightFrontDrive.getTargetPosition());
         telemetry.addData("Position", data);
         if (portal != null) {
@@ -213,35 +221,5 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
         rightFrontDrive.setPower(rightFrontPower);
         leftBackDrive.setPower(leftBackPower);
         rightBackDrive.setPower(rightBackPower);
-
-    }
-
-    void launch_manual(boolean shotRequested, double speed) {
-        switch (launchState) {
-            case IDLE:
-                if (shotRequested) {
-                    launcherSpeed = speed;
-                    launchState = LaunchState.PREPARE;
-                }
-                break;
-            case PREPARE:
-                applyAction(launchers, (launcher) -> launcher.setVelocity(launcherSpeed));
-                if (launchers[0].getVelocity() > speed - 50 && launchers[1].getVelocity() > speed - 50) {
-                    launchState = LaunchState.LAUNCH;
-                }
-                break;
-            case LAUNCH:
-                feeder.setPosition(feederFireAngle);
-                feederTimer.reset();
-                launchState = LaunchState.LAUNCHING;
-                break;
-            case LAUNCHING:
-                if (feederTimer.seconds() > FEED_TIME_SECONDS) {
-                    launchState = LaunchState.IDLE;
-                    applyAction(launchers, (launcher) -> launcher.setVelocity(0));
-                    feeder.setPosition(feederReloadAngle);
-                }
-                break;
-        }
     }
 }
