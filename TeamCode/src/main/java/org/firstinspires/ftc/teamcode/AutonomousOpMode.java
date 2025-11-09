@@ -44,7 +44,6 @@ public class AutonomousOpMode extends OpMode {
         timer = new ElapsedTime();
     }
     public void init_loop() {
-        queue.clear();
         if (gamepad1.aWasPressed() || gamepad2.aWasPressed()) {
             mode = A;
             color = BLUE;
@@ -58,23 +57,15 @@ public class AutonomousOpMode extends OpMode {
             mode = B;
             color = RED;
         }
-        switch (mode) {
-            case A:
-                queue.add(new Task(2000, 4000, Task.TRANSLATE, 75));
-                queue.add(new Task(3250, 3500, Task.ROTATE, 45));
-            case B:
-                queue.add(new Task(2000, 3000, Task.TRANSLATE, 50));
-                queue.add(new Task(3000, 3700, Task.ROTATE, 180));
+        queue.add(new Task(20000, 22000 + (mode * 1000), Task.TRANSLATE, 1));
+        if (!queue.isEmpty()) {
+            switch (mode) {
+                case A:
+                    queue.add(new Task(4000, 6000, Task.TRANSLATE, 1));
+                case B:
+                    queue.add(new Task(4000, 10000, Task.TRANSLATE, 1));
+            }
         }
-        queue.add(new Task(4000, 10000, Task.LAUNCH, 75));
-        queue.add(new Task(10000, 12500, Task.TRANSLATE, -50));
-        queue.add(new Task(11000, 11500, Task.ROTATE, 45));
-        queue.add(new Task(13500, 15500, Task.TRANSLATE, 50));
-        queue.add(new Task(14500, 16000, Task.ROTATE, -45));
-        queue.add(new Task(16000, 22000, Task.LAUNCH, 75));
-        queue.add(new Task(22000, 22500, Task.ROTATE, -90));
-        queue.add(new Task(22000, 25000, Task.TRANSLATE, 75));
-        queue.add(new Task(24500, 25000, Task.ROTATE, 45));
     }
 
     public void start() {
@@ -99,13 +90,12 @@ public class AutonomousOpMode extends OpMode {
         drivetrain.run(true);
     }
     public void execute(Task task, boolean stop) {
-        int target = stop ? 0 : task.target;
+        double target = stop ? 0 : task.target;
         if (task.type == Task.TRANSLATE) {
-            target *= TRANSLATION_FACTOR;
-            drivetrain.setTargets(new int[]{target, target, target, target});
+            drivetrain.setPowers(new double[]{target, -target, -target, target});
         } else if (task.type == Task.ROTATE) {
             target *= color;
-            drivetrain.setTargets(new int[]{target, target, target, target});
+            drivetrain.setPowers(new double[]{target, target, target, target});
         } else {
             launcher.targetSpeed = target;
             if (!stop) {

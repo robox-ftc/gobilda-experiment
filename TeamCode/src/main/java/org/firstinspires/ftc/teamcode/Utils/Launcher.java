@@ -87,7 +87,6 @@ public class Launcher implements IDevice {
         turretHomeSwitch = hardwareMap.get(DigitalChannel.class, "turretHomeSwitch");
         turretHomeSwitch.setMode(DigitalChannel.Mode.INPUT);
         turret = hardwareMap.get(DcMotorEx.class, "turret");
-        turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turret.setZeroPowerBehavior(FLOAT); // Do not need to break; The gear can be self-locked.
     }
 
@@ -207,7 +206,7 @@ public class Launcher implements IDevice {
             turret.setPower((controls.turretPower));
         }
 
-        spin(controls.wheelPower);
+        spin(controls.wheelPower * 0.75);
         if (controls.triggerDown)
             fire(calculateAngle());
         else

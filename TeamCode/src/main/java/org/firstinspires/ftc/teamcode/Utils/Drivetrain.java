@@ -51,20 +51,14 @@ public class Drivetrain implements IDevice {
             targetPowers = powers;
     }
 
-    public void setTargets(int[] targets) {
-        if (targets != null && targets.length == 4)
-            targetPositions = targets;
-    }
 
     public void run(boolean auto){
         // For now we only implemented non-auto mode.
-        setPowers(computeDriveTrainPower(this.controls));
-        this.telemetry.addData("dr pwr", Arrays.toString(this.targetPowers));
-        if (auto) {
-            applyActions(driveMotors, (motor, i) -> motor.setTargetPosition(this.targetPositions[i]));
-        } else {
-            applyActions(driveMotors, (motor, i) -> motor.setPower(this.targetPowers[i]));
+        if (!auto) {
+            setPowers(computeDriveTrainPower(this.controls));
         }
+        this.telemetry.addData("dr pwr", Arrays.toString(this.targetPowers));
+        applyActions(driveMotors, (motor, i) -> motor.setPower(this.targetPowers[i]));
     }
 
     public void readControls(GamePadReadings oldReadings, GamePadReadings newReadings)

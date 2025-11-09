@@ -8,14 +8,14 @@ public class Task {
     public int begin;
     public int end;
     public int type;
-    public int target;
+    public double target;
 
     public Task() {}
     public Task(int target, int type) {
         this.type = type;
         this.target = target;
     }
-    public Task(int begin, int end, int type, int target) {
+    public Task(int begin, int end, int type, double target) {
         this.begin = begin;
         this.end = end;
         this.type = type;
