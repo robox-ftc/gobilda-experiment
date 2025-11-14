@@ -5,8 +5,8 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
-import org.firstinspires.ftc.teamcode.Utils.Drivetrain;
-import org.firstinspires.ftc.teamcode.Utils.DrivetrainControls;
+import org.firstinspires.ftc.teamcode.devices.Drivetrain;
+import org.firstinspires.ftc.teamcode.devices.DrivetrainControls;
 
 @TeleOp(name = "DriveTest", group = "Robot")
 //@Disabled
@@ -21,10 +21,7 @@ public class DrivetrainTest extends OpMode {
     public void loop() {
         DrivetrainControls drivetrainControls = readDrivetrainControls(gamepad1, gamepad2);
 
-        double[] drivetrainPowers = computeDriveTrainPower(drivetrainControls);
-        this.drivetrain.setPowers(drivetrainPowers);
-
-        drivetrain.run(false);
+        drivetrain.run(drivetrainControls);
     }
 
     private DrivetrainControls readDrivetrainControls(Gamepad gamepad1, Gamepad gamepad2) {

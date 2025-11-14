@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Utils;
+package org.firstinspires.ftc.teamcode.devices;
 
 public class GamePadReadings {
     public double leftStickX;
@@ -16,7 +16,20 @@ public class GamePadReadings {
 
     public boolean dPadUp;
     public boolean dPadDown;
-
+    public boolean dPadLeft;
+    public boolean dPadRight;
+    public boolean dPad;
     public double leftTrigger;
     public double rightTrigger;
+
+    public boolean aWasReleased;
+    public boolean aWasPressed;
+    public boolean bWasReleased;
+    public boolean bWasPressed;
+    public boolean xWasReleased;
+    public boolean xWasPressed;
+    public boolean yWasReleased;
+    public boolean yWasPressed;
+
+
 }

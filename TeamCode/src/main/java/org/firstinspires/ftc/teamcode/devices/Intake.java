@@ -1,18 +1,16 @@
-package org.firstinspires.ftc.teamcode.Utils;
+package org.firstinspires.ftc.teamcode.devices;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
-public class Intake implements IDevice {
+public class Intake {
     private DcMotorEx frontIntakeWheel = null;
-    private double manualPower = 0.0;
     private Telemetry telemetry;
 
     public Intake(HardwareMap hardwareMap, Telemetry telemetry) {
@@ -28,29 +26,17 @@ public class Intake implements IDevice {
     }
 
     public boolean isBallDetected(){
+        return false;
+    }
+    public boolean isChamberFull(){
         return true;
     }
 
-    public boolean isChamberFull(){
-        return false;
-    }
-
-    public void run(boolean autoMode){
-        double targetPower = 0.0;
-        if (autoMode){
-            if (isBallDetected() && !isChamberFull())
-                targetPower = 1.0;
-        }
-        else{
-            targetPower = manualPower;
-        }
-
+    public void run(double manualPower){
+        double autoPower = 0.0;
+        if (isBallDetected() && !isChamberFull())
+                autoPower = 1.0;
+        double targetPower = Math.max(-1.0, Math.min(1.0, manualPower + autoPower));
         spin(targetPower);
-    }
-
-    public void readControls(GamePadReadings oldReadings, GamePadReadings newReadings) {
-        this.manualPower = newReadings.rightBumper ? 1.0 : newReadings.rightTrigger;
-
-        telemetry.addData("intake", this.manualPower);
     }
 }
