@@ -23,7 +23,7 @@ public class DrivetrainControls {
     }
 
 
-    private static double AimingKp = 0.05;
+    private static double AimingKp = 0.04;
     private static double MovingKp = 0.5;
 
     public static double computeAimingPower(double angle, double tolerance){

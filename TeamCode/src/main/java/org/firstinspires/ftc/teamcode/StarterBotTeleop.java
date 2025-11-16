@@ -16,6 +16,7 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.List;
+import java.util.Locale;
 
 @TeleOp(name = "StarterBotTeleop-2025Decode", group = "StarterBot")
 //@Disabled
@@ -38,7 +39,7 @@ public class StarterBotTeleop extends OpMode {
     private boolean autoMode = false;
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
-    private int targetTagId = -1;
+    private int targetTagId = 20; // default to Team BLUE
     private StartPosition startPosition = StartPosition.TBD;
 
     /*
@@ -189,12 +190,12 @@ public class StarterBotTeleop extends OpMode {
 
         List<AprilTagDetection> currentDetections = aprilTag.getDetections();
         for (AprilTagDetection detection : currentDetections) {
-            if (detection.metadata.id == 20){
+            if (detection.metadata != null && detection.metadata.id == 20) {
                 if (targetTagId == detection.metadata.id)
                     targetTag = detection;
             }
 
-            if (detection.metadata.id == 24){
+            if (detection.metadata != null && detection.metadata.id == 24) {
                 if (targetTagId == detection.metadata.id)
                     targetTag = detection;
             }
@@ -209,6 +210,8 @@ public class StarterBotTeleop extends OpMode {
                 angle = a;
                 distance = d;
             }};
+            telemetry.addData("ftcPose", String.format(Locale.US, "%.2f", targetTag.ftcPose.x) + ", "
+                    + String.format(Locale.US, "%.2f", targetTag.ftcPose.y));
             telemetry.addLine(target.toString());
         }
 
@@ -237,6 +240,7 @@ public class StarterBotTeleop extends OpMode {
         // If x - aiming button is down and target visible, combine extra rotation power to aim;
         if (gamepadReading.xButton && target != null){
             double extraRotationPower = DrivetrainControls.computeAimingPower(target.angle, 2);
+            telemetry.addData("extraRotationPower", extraRotationPower);
             driveTrainControls.combinePower(0, 0, extraRotationPower);
         }
 
