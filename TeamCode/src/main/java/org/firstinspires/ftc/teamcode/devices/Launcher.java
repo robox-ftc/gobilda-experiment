@@ -28,7 +28,7 @@ public class Launcher {
     // This should be the ticks per each degree of turret change.
     // Motor ticks per revolution / 360 * worm-gear-ratio (1:28)
     private static final double TURRET_TICKS_PER_DEGREE =TURRET_TICKS_PER_REV/360*28;
-    public static double FEEDER_ANGLE_SPAN = 300.0; // for goblida 2000-2500-0002
+    public static double FEEDER_ANGLE_SPAN = 300.0; // 300.0 // for goblida 2000-2500-0002
     final double STOP_POWER = 0.0; //We send this power to the servos when we want them to stop.
 
     private double feederFireAngle;
@@ -123,7 +123,9 @@ public class Launcher {
          */
         feeder = hardwareMap.get(Servo.class, "feeder");
         // The following setting depends on your hardware mountings.
-        this.feederReloadAngle = 0.5;
+        this.feederReloadAngle = 0.5125;
+
+
         this.feederFireAngle = this.feederReloadAngle - 75.0 / FEEDER_ANGLE_SPAN;
         feeder.resetDeviceConfigurationForOpMode();
         feeder.setPosition(feederReloadAngle);
