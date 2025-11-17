@@ -43,6 +43,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 import java.util.Locale;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+
+import java.util.Locale;
+
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot for the
  * 2025-2026 FIRST® Tech Challenge season DECODE™. It leverages a differential/Skid-Steer
@@ -60,6 +66,7 @@ import java.util.Locale;
 
 @TeleOp(name = "StarterBotTeleopMecanums2025", group = "StarterBot")
 // @Disabled
+public class StarterBotTeleopMecanums extends StarterBotAuto {
 public class StarterBotTeleopMecanums extends StarterBotAuto {
     final double STOP_SPEED = 0.0; // We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
@@ -81,6 +88,12 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
         leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         TIME_BETWEEN_SHOTS = 0;
+        super.init();
+        leftFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightFrontDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        leftBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightBackDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        TIME_BETWEEN_SHOTS = 0;
     }
 
     /*
@@ -88,6 +101,7 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
      */
     @Override
     public void init_loop() {
+        super.init_loop();
         super.init_loop();
     }
 
@@ -130,6 +144,18 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
 
         mecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x,
                 reverseRotate ? -gamepad1.right_stick_x : gamepad1.right_stick_x);
+        String data = "";
+        if (odo != null) {
+            odo.update();
+            Pose2D pos = odo.getPosition();
+            data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM),
+                    pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
+        }
+
+        targetTag = locateTarget(targetTagId);
+
+        mecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x,
+                reverseRotate ? -gamepad1.right_stick_x : gamepad1.right_stick_x);
 
         /*
          * Here we give the user control of the speed of the launcher motor without
@@ -140,7 +166,17 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
             if (!drivetrainOnly) {
                 applyAction(launchers, (launcher) -> launcher.setVelocity(LAUNCHER_TARGET_VELOCITY_2));
             }
+            if (!drivetrainOnly) {
+                applyAction(launchers, (launcher) -> launcher.setVelocity(LAUNCHER_TARGET_VELOCITY_2));
+            }
         } else if (gamepad1.b) { // stop flywheel
+            if (!drivetrainOnly) {
+                applyAction(launchers, (launcher) -> launcher.setVelocity(STOP_SPEED));
+            }
+        }
+
+        if (gamepad1.start) {
+            aim(1);
             if (!drivetrainOnly) {
                 applyAction(launchers, (launcher) -> launcher.setVelocity(STOP_SPEED));
             }
@@ -170,10 +206,47 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
                 turret.setPower(0);
             }
         }
+        if (!drivetrainOnly) {
+            launch(gamepad1.rightBumperWasPressed(), LAUNCHER_TARGET_VELOCITY_2);
+            launch(gamepad1.xWasPressed(), LAUNCHER_TARGET_VELOCITY_1);
+            launch(gamepad1.aWasPressed(), LAUNCHER_TARGET_VELOCITY_3);
+
+            frontIntakeWheel.setPower(-gamepad1.left_trigger);
+            if (gamepad1.dpad_up || gamepad1.dpad_down) {
+                int turretDegree = (int) TURRET_TICKS_PER_DEGREE;
+                int currentPosition = turret.getCurrentPosition();
+                turret.setTargetPosition(currentPosition + (gamepad1.dpad_up ? turretDegree : -turretDegree));
+                // turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                turret.setPower(gamepad1.dpad_up ? 1 : -1);
+            } else {
+                turret.setPower(0);
+            }
+        }
 
         /*
          * Show the state and motor powers
          */
+        telemetry.addData("Team", alliance);
+        telemetry.addData("LauncherState", launchState);
+        if (targetTag != null) {
+            telemetry.addData("Tag Location",
+                    String.format(Locale.US, "{X: %.3f, Y: %.3f}", targetTag.ftcPose.x, targetTag.ftcPose.y));
+        }
+        if (!drivetrainOnly) {
+            telemetry.addData("motorSpeed", "left (%.0f), right (%.0f)", launchers[0].getVelocity(),
+                    launchers[1].getVelocity());
+        }
+        telemetry.addData("Motor Current Positions", "left (%d), right (%d)",
+                leftFrontDrive.getCurrentPosition(),
+                rightFrontDrive.getCurrentPosition());
+        telemetry.addData("Motor Target Positions", "left (%d), right (%d)",
+                leftFrontDrive.getTargetPosition(),
+                rightFrontDrive.getTargetPosition());
+        telemetry.addData("Position", data);
+        if (portal != null) {
+            telemetry.addData("Camera Status", portal.getCameraState());
+        }
         telemetry.addData("Team", alliance);
         telemetry.addData("LauncherState", launchState);
         if (targetTag != null) {
