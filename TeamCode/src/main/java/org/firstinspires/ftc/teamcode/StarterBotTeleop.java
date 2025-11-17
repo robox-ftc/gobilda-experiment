@@ -242,7 +242,7 @@ public class StarterBotTeleop extends OpMode {
             double[] wheelPowers = {1.0, 1.0};
             launcherControls = new LauncherControls(wheelPowers[0], wheelPowers[1],
                     launcherControls.turretPower, gamepadReading.aButton);
-        } else {
+        } else if (gamepadReading.rightBumper) {
             double[] wheelPowers = {0.85, 0.85};
             launcherControls = new LauncherControls(wheelPowers[0], wheelPowers[1],
                     launcherControls.turretPower, gamepadReading.aButton);

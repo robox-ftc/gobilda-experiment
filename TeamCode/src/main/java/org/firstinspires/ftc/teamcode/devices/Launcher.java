@@ -123,10 +123,10 @@ public class Launcher {
          */
         feeder = hardwareMap.get(Servo.class, "feeder");
         // The following setting depends on your hardware mountings.
-        this.feederReloadAngle = 0.5125;
+        this.feederReloadAngle = 0.57;
 
 
-        this.feederFireAngle = this.feederReloadAngle - 75.0 / FEEDER_ANGLE_SPAN;
+        this.feederFireAngle = this.feederReloadAngle - 50.0 / FEEDER_ANGLE_SPAN;
         feeder.resetDeviceConfigurationForOpMode();
         feeder.setPosition(feederReloadAngle);
         feederTimer = new ElapsedTime();
@@ -193,8 +193,7 @@ public class Launcher {
         turret.setPower(controls.turretPower);
         if (isTurretHomed() && controls.turretPower < 0){
             turret.setPower(0);
-        }
-        else{
+        } else{
             turret.setPower(controls.turretPower);
         }
 
