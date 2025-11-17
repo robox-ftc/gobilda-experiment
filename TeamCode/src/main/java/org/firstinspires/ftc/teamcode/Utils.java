@@ -1,9 +1,10 @@
-package org.firstinspires.ftc.teamcode.utils;
+package org.firstinspires.ftc.teamcode;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class Utils {
+
     public static <T> void applyAction(T[] objs, Consumer<T> action) {
         for (T obj : objs) {
             action.accept(obj);
@@ -14,9 +15,5 @@ public class Utils {
         for (int i = 0; i < objs.length; i++) {
             action.accept(objs[i], i);
         }
-    }
-
-    public static boolean toggle(boolean oldState, boolean flip){
-        return flip ? !oldState : oldState;
     }
 }

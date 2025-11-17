@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.data;
+package org.firstinspires.ftc.teamcode;
 
 public class Vec4 {
     public double x;
