@@ -54,15 +54,13 @@ public class LauncherControls
     {
         // An experiment shows the max rmp reading is about 1033.
         // TODO: collect data, make a lookup table, the reading is not accurate, UNIT is inch
-        if (target.distance/12.0 > 8) //ft, shoot from farther zone
-        {
+        if (target.distance/12.0 > 8) { //ft, shoot from farther zone
             return new AimingParameters(30.0, 1000.0);
-        }
-        //else if (target.distance < 8){
+        } else if (target.distance <= 8){
             return new AimingParameters(60.0, 700.0);
-        //}
+        }
 
-        //return new AimingParameters();
+        return new AimingParameters();
     }
 
     public static LauncherControls readControls(GamePadReadings newReadings) {

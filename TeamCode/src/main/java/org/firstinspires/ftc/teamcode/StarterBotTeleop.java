@@ -14,6 +14,7 @@ import org.firstinspires.ftc.teamcode.devices.*;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.opencv.core.Mat;
 
 import java.util.List;
 
@@ -39,6 +40,7 @@ public class StarterBotTeleop extends OpMode {
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
     private int targetTagId = -1;
+    private Target target = new Target(80, 0); // default value
     private StartPosition startPosition = StartPosition.TBD;
 
     /*
@@ -116,6 +118,14 @@ public class StarterBotTeleop extends OpMode {
             telemetry.addLine("Starting position NEAR.");
          //   launcher.setTurretAngle(30, 5);
         }
+
+        if (startPosition != StartPosition.TBD && targetTagId != -1) {
+            if (startPosition == StartPosition.NEAR) {
+                target = new Target(132, targetTagId == 20 ? Math.atan2(1, 2) : -Math.atan2(1, 2));
+            } else {
+                target = new Target(72, 0);
+            }
+        }
     }
 
     /*
@@ -185,7 +195,6 @@ public class StarterBotTeleop extends OpMode {
         }};
 
         AprilTagDetection targetTag = null;
-        Target target = null;
 
         List<AprilTagDetection> currentDetections = aprilTag.getDetections();
         for (AprilTagDetection detection : currentDetections) {
@@ -205,10 +214,8 @@ public class StarterBotTeleop extends OpMode {
         if (targetTag != null){
             double a = Math.toDegrees(Math.atan2(targetTag.ftcPose.x, targetTag.ftcPose.y));
             double d = targetTag.ftcPose.y;
-            target = new Target(){{
-                angle = a;
-                distance = d;
-            }};
+            target.angle = a;
+            target.distance = d;
             telemetry.addLine(target.toString());
         }
 
@@ -218,7 +225,7 @@ public class StarterBotTeleop extends OpMode {
         // launcher controls read from trigger and dPad to determine power apply onto flywheels and turret motors.
         LauncherControls launcherControls = LauncherControls.readControls(gamepadReading);
         // If left bumper if pressed down, we compute the powers to aim, and replace the raw controls.
-        if (gamepadReading.leftBumper && target != null)
+        if (gamepadReading.leftBumper && gamepadReading.rightBumper)
         {
             double tAngle = launcher.getTurretAngle();
             double[] rpms  = launcher.getWheelPRMs();
@@ -231,7 +238,16 @@ public class StarterBotTeleop extends OpMode {
             //before we install stop limit on turret, let us set turret rotation power to the original
             launcherControls = new LauncherControls(wheelPowers[0], wheelPowers[1],
                     launcherControls.turretPower, gamepadReading.aButton);
+        } else if (gamepadReading.leftBumper) {
+            double[] wheelPowers = {1.0, 1.0};
+            launcherControls = new LauncherControls(wheelPowers[0], wheelPowers[1],
+                    launcherControls.turretPower, gamepadReading.aButton);
+        } else {
+            double[] wheelPowers = {0.85, 0.85};
+            launcherControls = new LauncherControls(wheelPowers[0], wheelPowers[1],
+                    launcherControls.turretPower, gamepadReading.aButton);
         }
+
 
         DrivetrainControls driveTrainControls = DrivetrainControls.readControls(gamepadReading);
         // If x - aiming button is down and target visible, combine extra rotation power to aim;
