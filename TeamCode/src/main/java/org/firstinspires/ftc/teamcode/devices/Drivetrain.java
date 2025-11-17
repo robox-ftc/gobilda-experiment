@@ -1,18 +1,17 @@
-package org.firstinspires.ftc.teamcode.Utils;
+package org.firstinspires.ftc.teamcode.devices;
 
-import static org.firstinspires.ftc.teamcode.Utils.Utils.applyAction;
-import static org.firstinspires.ftc.teamcode.Utils.Utils.applyActions;
+import static org.firstinspires.ftc.teamcode.utils.Utils.applyAction;
+import static org.firstinspires.ftc.teamcode.utils.Utils.applyActions;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.data.Vec2;
 
 import java.util.Arrays;
 
-public class Drivetrain implements IDevice {
+public class Drivetrain {
 
     // Declare OpMode members.
     private DcMotorEx frontLeftDrive = null;
@@ -20,10 +19,6 @@ public class Drivetrain implements IDevice {
     private DcMotorEx rearLeftDrive = null;
     private DcMotorEx rearRightDrive = null;
     private DcMotorEx[] driveMotors = new DcMotorEx[4];
-    private double[] targetPowers = new double[4];
-    private int[] targetPositions = new int[4];
-    private DrivetrainControls controls = new DrivetrainControls();
-
     private Telemetry telemetry = null;
 
     public Drivetrain(HardwareMap hardwareMap, Telemetry telemetry, boolean auto){
@@ -41,38 +36,37 @@ public class Drivetrain implements IDevice {
         driveMotors[2] = rearRightDrive;
         driveMotors[3] = rearLeftDrive;
         applyAction(driveMotors, (motor) -> motor.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER));
-        // for now, to be changed
         applyAction(driveMotors, (motor) -> motor.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE));
         applyAction(driveMotors, (motor) -> motor.setPower(0.0));
     }
 
     public void setPowers(double [] powers) {
         if (powers != null && powers.length == 4)
-            targetPowers = powers;
+            applyActions(driveMotors, (motor, i) -> motor.setPower(powers[i]));
     }
 
-    public void setTargets(int[] targets) {
-        if (targets != null && targets.length == 4)
-            targetPositions = targets;
+    public void run(DrivetrainControls controls){
+        setPowers(computeDriveTrainPower(controls));
+    }
+    
+    public void rotate(double power){
+        DrivetrainControls dr = new DrivetrainControls(){{
+                translationXPower = 0;
+                translationYPower = 0;
+                rotationPower = power;
+        }};
+
+        double[] powers = computeDriveTrainPower(dr);
+        setPowers(powers);
     }
 
-    public void run(boolean auto){
-        // For now we only implemented non-auto mode.
-        setPowers(computeDriveTrainPower(this.controls));
-        this.telemetry.addData("dr pwr", Arrays.toString(this.targetPowers));
-        if (auto) {
-            applyActions(driveMotors, (motor, i) -> motor.setTargetPosition(this.targetPositions[i]));
-        } else {
-            applyActions(driveMotors, (motor, i) -> motor.setPower(this.targetPowers[i]));
-        }
-    }
+    public void translate(Vec2 direction, double power){
+        Vec2 d = direction.normalize();
+        DrivetrainControls dr = new DrivetrainControls(d.x * power,
+                d.y * power, 0.0);
 
-    public void readControls(GamePadReadings oldReadings, GamePadReadings newReadings)
-    {
-        this.controls.translationXPower = newReadings.leftStickX;
-        this.controls.translationYPower = -newReadings.leftStickY;
-        this.controls.rotationPower = newReadings.rightStickX;
-        this.telemetry.addData("sticks ",  this.controls.toString());
+        double[] powers = computeDriveTrainPower(dr);
+        setPowers(powers);
     }
 
     private double[] computeDriveTrainPower(DrivetrainControls controls) {
@@ -81,17 +75,15 @@ public class Drivetrain implements IDevice {
         double rearLeftPower   = controls.translationYPower - controls.translationXPower + controls.rotationPower;
         double rearRightPower  = -controls.translationYPower - controls.translationXPower + controls.rotationPower;
 
-        double maxPower = Math.max(1.0, Math.max(
-                Math.abs(frontLeftPower),
-                Math.max(Math.abs(frontRightPower),
-                        Math.max(Math.abs(rearLeftPower),
-                                Math.abs(rearRightPower)))
-        ));
+        double maxPower = Math.max(Math.abs(frontLeftPower),
+                Math.max(Math.abs(frontRightPower), Math.max(Math.abs(rearLeftPower), Math.abs(rearRightPower))));
 
-        frontLeftPower  /= maxPower;
-        frontRightPower /= maxPower;
-        rearRightPower  /= maxPower;
-        rearLeftPower   /= maxPower;
+        if (maxPower > 1.0) {
+            frontLeftPower /= maxPower;
+            frontRightPower /= maxPower;
+            rearRightPower /= maxPower;
+            rearLeftPower /= maxPower;
+        }
 
         return new double[]{frontLeftPower, frontRightPower, rearRightPower, rearLeftPower};
     }
