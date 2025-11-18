@@ -136,7 +136,7 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
          * automatically
          * queuing a shot.
          */
-        if (gamepad1.y) {
+        if (gamepad1.left_trigger > 0.5) {
             if (!drivetrainOnly) {
                 applyAction(launchers, (launcher) -> launcher.setVelocity(LAUNCHER_TARGET_VELOCITY_2));
             }
@@ -146,19 +146,25 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
             }
         }
 
-        if (gamepad1.start) {
+        if (gamepad1.x) {
             aim(1);
         }
 
         /*
          * Now we call our "Launch" function.
          */
+        double velocity_offset = 0;
+        if (targetTag != null) {
+            velocity_offset = (targetTag.ftcPose.y - 100) / 100 * (LAUNCHER_TARGET_VELOCITY_3 - LAUNCHER_TARGET_VELOCITY_1);
+            velocity_offset = Math.max(velocity_offset, LAUNCHER_TARGET_VELOCITY_1 - LAUNCHER_TARGET_VELOCITY_2);
+            velocity_offset = Math.min(velocity_offset, LAUNCHER_TARGET_VELOCITY_3 - LAUNCHER_TARGET_VELOCITY_2);
+        }
         if (!drivetrainOnly) {
-            launch(gamepad1.rightBumperWasPressed(), LAUNCHER_TARGET_VELOCITY_2);
-            launch(gamepad1.xWasPressed(), LAUNCHER_TARGET_VELOCITY_1);
-            launch(gamepad1.aWasPressed(), LAUNCHER_TARGET_VELOCITY_3);
+            launch(gamepad1.aWasPressed(), LAUNCHER_TARGET_VELOCITY_2 + velocity_offset);
+            launch(gamepad1.startWasPressed(), LAUNCHER_TARGET_VELOCITY_1);
+            launch(gamepad1.yWasPressed(), LAUNCHER_TARGET_VELOCITY_3);
 
-            frontIntakeWheel.setPower(-gamepad1.left_trigger);
+            frontIntakeWheel.setPower(gamepad1.right_bumper || gamepad1.right_trigger > 0.5 ? -1 : 0);
             if (gamepad1.dpad_up || gamepad1.dpad_down) {
                 int turretDegree = (int) TURRET_TICKS_PER_DEGREE;
                 int currentPosition = turret.getCurrentPosition();
