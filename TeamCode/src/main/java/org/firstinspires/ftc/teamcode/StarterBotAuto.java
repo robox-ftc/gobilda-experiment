@@ -79,7 +79,7 @@ import java.util.Locale;
 // @Disabled
 public class StarterBotAuto extends OpMode {
 
-    final double FEED_TIME = 0.70; // The feeder servos run this long when a shot is requested.
+    final double FEED_TIME = 1; // The feeder servos run this long when a shot is requested.
 
     /*
      * When we control our launcher motor, we are using encoders. These allow the
@@ -90,9 +90,9 @@ public class StarterBotAuto extends OpMode {
      * launcher should run
      * at. The minimum velocity is a threshold for determining when to fire.
      */
-    final double LAUNCHER_TARGET_VELOCITY_1 = 1687.5;
-    final double LAUNCHER_TARGET_VELOCITY_2 = 1900;
-    final double LAUNCHER_TARGET_VELOCITY_3 = 2250;
+    final double LAUNCHER_TARGET_VELOCITY_1 = 2050;
+    final double LAUNCHER_TARGET_VELOCITY_2 = 2275;
+    final double LAUNCHER_TARGET_VELOCITY_3 = 2500;
     /*
      * The number of seconds that we wait between each of our 3 shots from the
      * launcher. This
@@ -123,12 +123,12 @@ public class StarterBotAuto extends OpMode {
     final double TICKS_PER_MM = (ENCODER_TICKS_PER_REV / (WHEEL_DIAMETER_MM * Math.PI));
     final double TRACK_WIDTH_MM = 419; // default: 404
 
-    int shotsToFire = 3; // The number of shots to fire in this auto.
+    int shotsToFire = 4; // The number of shots to fire in this auto.
 
     double robotRotationAngle = 45;
 
-    double feederReloadAngle = 0.55;
-    double feederFireAngle = 0.28;
+    double feederReloadAngle = 0.6;
+    double feederFireAngle = 0.3;
 
     final double TURRET_TICKS_PER_DEGREE = 5272.0 / 360;
 
@@ -224,7 +224,10 @@ public class StarterBotAuto extends OpMode {
         DRIVING_AWAY_FROM_GOAL,
         ROTATE_OFF_LINE,
         DRIVING_OFF_LINE,
+        ROTATE_TO_LOADING,
+        DRIVING_TO_LOADING,
         COMPLETE,
+
     }
 
     private AutonomousState autonomousState = AutonomousState.DRIVING_TO_LINE;
@@ -531,7 +534,7 @@ public class StarterBotAuto extends OpMode {
              * ball.
              */
             case DRIVING_TO_LINE:
-                if (drive(DRIVE_SPEED, 50, DistanceUnit.INCH, 1, 0.5)) {
+                if (drive(DRIVE_SPEED, 50, DistanceUnit.INCH, 1, 0.35)) {
                     leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -548,7 +551,7 @@ public class StarterBotAuto extends OpMode {
                     robotRotationAngle = 45;
                 }
 
-                if (rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES, 1, 0.25)) {
+                if (rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES, 1, 0.3)) {
                     leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -599,12 +602,41 @@ public class StarterBotAuto extends OpMode {
                             applyAction(launchers, (launcher) -> launcher.setVelocity(0));
                         }
                         if (startPosition == StartPosition.FAR) {
-                            autonomousState = AutonomousState.COMPLETE;
+                            autonomousState = AutonomousState.ROTATE_TO_LOADING;
+                            opMaxTimer.reset();
                         } else {
                             opMaxTimer.reset();
                             autonomousState = AutonomousState.ROTATE_OFF_LINE;
                         }
                     }
+                }
+                break;
+
+            case ROTATE_TO_LOADING:
+                if (alliance == Alliance.BLUE) {
+                    robotRotationAngle = -110;
+                } else if (alliance == Alliance.RED) {
+                    robotRotationAngle = 110;
+                }
+
+                if (rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES, 1, 0.75)) {
+                    leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    autonomousState = AutonomousState.DRIVING_TO_LOADING;
+                    opMaxTimer.reset();
+                }
+                break;
+
+            case DRIVING_TO_LOADING:
+                if (drive(DRIVE_SPEED, -50, DistanceUnit.INCH, 1, 4.5)) {
+                    leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    rightBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    autonomousState = AutonomousState.COMPLETE;
+                    opMaxTimer.reset();
                 }
                 break;
 
@@ -616,7 +648,7 @@ public class StarterBotAuto extends OpMode {
                  * "holdSeconds."
                  * Once the function returns "true" we reset the encoders again and move on.
                  */
-                if (drive(DRIVE_SPEED, -30, DistanceUnit.INCH, 1, 1)) {
+                if (drive(DRIVE_SPEED, -30, DistanceUnit.INCH, 1, 1.2)) {
                     leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -632,7 +664,7 @@ public class StarterBotAuto extends OpMode {
                     robotRotationAngle = -45;
                 }
 
-                if (rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES, 1, 0.6)) {
+                if (rotate(ROTATE_SPEED, robotRotationAngle, AngleUnit.DEGREES, 1, 0.55)) {
                     leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -644,7 +676,7 @@ public class StarterBotAuto extends OpMode {
 
 
             case DRIVING_OFF_LINE:
-                if (drive(DRIVE_SPEED, -30, DistanceUnit.INCH, 1, 0.6)) {
+                if (drive(DRIVE_SPEED, -30, DistanceUnit.INCH, 1, 0.65)) {
                     leftFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     rightFrontDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                     leftBackDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
