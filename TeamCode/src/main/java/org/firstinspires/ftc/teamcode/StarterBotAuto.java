@@ -700,8 +700,8 @@ public class StarterBotAuto extends OpMode {
                 if (!drivetrainOnly) {
                     applyAction(launchers, (launcher) -> launcher.setVelocity(launcherSpeed));
 
-                    if (launchers[0].getVelocity() > launcherSpeed - 50
-                            && launchers[1].getVelocity() > launcherSpeed - 50) {
+                    if (launchers[0].getVelocity() > launcherSpeed - 25
+                            && launchers[1].getVelocity() > launcherSpeed - 25) {
                         launchState = LaunchState.LAUNCH;
                         feederTimer.reset();
                     }

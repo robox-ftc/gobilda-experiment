@@ -123,10 +123,10 @@ public class Launcher {
          */
         feeder = hardwareMap.get(Servo.class, "feeder");
         // The following setting depends on your hardware mountings.
-        this.feederReloadAngle = 0.57;
+        this.feederReloadAngle = 0.58;
 
 
-        this.feederFireAngle = this.feederReloadAngle - 50.0 / FEEDER_ANGLE_SPAN;
+        this.feederFireAngle = this.feederReloadAngle - 80.0 / FEEDER_ANGLE_SPAN;
         feeder.resetDeviceConfigurationForOpMode();
         feeder.setPosition(feederReloadAngle);
         feederTimer = new ElapsedTime();
@@ -177,7 +177,7 @@ public class Launcher {
     public static double RRP = 145.1; // for 5.1 : 1 1150 RPM
     public double getLeftWheelRPM(){
         // get velocity returns TPS, ticks per second
-        return launcherLeft.getVelocity() / RRP * 60 ;
+        return launcherLeft.getVelocity() / RRP * 60;
     }
 
     public double getRightWheelRPM(){
@@ -255,6 +255,7 @@ public class Launcher {
     // 0.8 means 1/300 * 0.8
     private double calculateAngle() {
         // find a relationship between turret angle and feeder angle.
+        // set to 1
         return 0.8;
     }
 }
