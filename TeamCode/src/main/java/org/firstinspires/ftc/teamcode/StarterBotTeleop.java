@@ -65,10 +65,10 @@ public class StarterBotTeleop extends OpMode {
      */
     @Override
     public void init() {
-         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
-         launcher = new Launcher(hardwareMap, telemetry);
-         intake = new Intake(hardwareMap, telemetry);
-         telemetry.addData("Status", "Motors Initialized");
+        drivetrain = new Drivetrain(hardwareMap, telemetry, false);
+        launcher = new Launcher(hardwareMap, telemetry);
+        intake = new Intake(hardwareMap, telemetry);
+        telemetry.addData("Status", "Motors Initialized");
 
         // Initialize AprilTag processor
         long acquTime = System.nanoTime();
@@ -110,13 +110,13 @@ public class StarterBotTeleop extends OpMode {
         if (gamepad1.yWasPressed() || gamepad2.yWasPressed()) {
             startPosition = StartPosition.FAR;
             telemetry.addLine("Starting position FAR.");
-           // launcher.setTurretAngle(60, 5);
+            // launcher.setTurretAngle(60, 5);
         }
 
         if (gamepad1.aWasPressed() || gamepad2.aWasPressed()) {
             startPosition = StartPosition.NEAR;
             telemetry.addLine("Starting position NEAR.");
-         //   launcher.setTurretAngle(30, 5);
+            //   launcher.setTurretAngle(30, 5);
         }
 
         if (startPosition != StartPosition.TBD && targetTagId != -1) {
@@ -163,7 +163,7 @@ public class StarterBotTeleop extends OpMode {
 
             // Since stick reading ranges from -1 to 1, we use the reading with mas absolute value.
             leftStickX =  Math.abs(gamepad1.left_stick_x) >= Math.abs(gamepad2.left_stick_x) ?
-                gamepad1.left_stick_x : gamepad2.left_stick_x;
+                    gamepad1.left_stick_x : gamepad2.left_stick_x;
             leftStickY = Math.abs(gamepad1.left_stick_y) >= Math.abs(gamepad2.left_stick_y) ?
                     gamepad1.left_stick_y : gamepad2.left_stick_y;
             rightStickX = Math.abs(gamepad1.right_stick_x) >= Math.abs(gamepad2.right_stick_x) ?
@@ -239,11 +239,11 @@ public class StarterBotTeleop extends OpMode {
             launcherControls = new LauncherControls(wheelPowers[0], wheelPowers[1],
                     launcherControls.turretPower, gamepadReading.aButton);
         } else if (gamepadReading.leftBumper) {
-            double[] wheelPowers = {1.0, 1.0};
+            double[] wheelPowers = {0.85, 0.85};
             launcherControls = new LauncherControls(wheelPowers[0], wheelPowers[1],
                     launcherControls.turretPower, gamepadReading.aButton);
         } else if (gamepadReading.rightBumper) {
-            double[] wheelPowers = {0.85, 0.85};
+            double[] wheelPowers = {0.79, 0.79};
             launcherControls = new LauncherControls(wheelPowers[0], wheelPowers[1],
                     launcherControls.turretPower, gamepadReading.aButton);
         }
