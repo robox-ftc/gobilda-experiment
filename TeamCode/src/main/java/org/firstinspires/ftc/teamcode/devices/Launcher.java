@@ -123,7 +123,7 @@ public class Launcher {
          */
         feeder = hardwareMap.get(Servo.class, "feeder");
         // The following setting depends on your hardware mountings.
-        this.feederReloadAngle = 0.57;
+        this.feederReloadAngle = 0.58;
 
 
         this.feederFireAngle = this.feederReloadAngle - 50.0 / FEEDER_ANGLE_SPAN;
