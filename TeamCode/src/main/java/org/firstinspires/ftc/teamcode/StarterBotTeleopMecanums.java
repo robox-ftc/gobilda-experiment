@@ -36,12 +36,7 @@ import static org.firstinspires.ftc.teamcode.utils.Utils.applyAction;
 
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-
-import java.util.Locale;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 /*
  * This file includes a teleop (driver-controlled) file for the goBILDA® StarterBot for the
@@ -58,17 +53,10 @@ import java.util.Locale;
  * we will also need to adjust the "PIDF" coefficients with some that are a better fit for our application.
  */
 
-@TeleOp(name = "StarterBotTeleopMecanums2025", group = "StarterBot")
+@TeleOp(name = "StarterBotTeleopMecanums2025", group = "A.StarterBot")
 // @Disabled
 public class StarterBotTeleopMecanums extends StarterBotAuto {
     final double STOP_SPEED = 0.0; // We send this power to the servos when we want them to stop.
-    final double FULL_SPEED = 1.0;
-
-    // Setup a variable for each drive wheel to save power level for telemetry
-    double leftFrontPower;
-    double rightFrontPower;
-    double leftBackPower;
-    double rightBackPower;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -121,9 +109,7 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
         String data = "";
         if (odo != null) {
             odo.update();
-            Pose2D pos = odo.getPosition();
-            data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM),
-                    pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
+            pos = odo.getPosition();
         }
 
         targetTag = locateTarget(targetTagId);
@@ -180,26 +166,7 @@ public class StarterBotTeleopMecanums extends StarterBotAuto {
         /*
          * Show the state and motor powers
          */
-        telemetry.addData("Team", alliance);
-        telemetry.addData("LauncherState", launchState);
-        if (targetTag != null) {
-            telemetry.addData("Tag Location",
-                    String.format(Locale.US, "{X: %.3f, Y: %.3f}", targetTag.ftcPose.x, targetTag.ftcPose.y));
-        }
-        if (!drivetrainOnly) {
-            telemetry.addData("motorSpeed", "left (%.0f), right (%.0f)", launchers[0].getVelocity(),
-                    launchers[1].getVelocity());
-        }
-        telemetry.addData("Motor Current Positions", "left (%d), right (%d)",
-                leftFrontDrive.getCurrentPosition(),
-                rightFrontDrive.getCurrentPosition());
-        telemetry.addData("Motor Target Positions", "left (%d), right (%d)",
-                leftFrontDrive.getTargetPosition(),
-                rightFrontDrive.getTargetPosition());
-        telemetry.addData("Position", data);
-        if (portal != null) {
-            telemetry.addData("Camera Status", portal.getCameraState());
-        }
+         updateTelemetry();
     }
 
     /*

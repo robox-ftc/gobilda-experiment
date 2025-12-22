@@ -1,5 +1,6 @@
 
 package org.firstinspires.ftc.teamcode;
+
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -10,15 +11,19 @@ import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.data.AimingParameters;
 import org.firstinspires.ftc.teamcode.data.Target;
-import org.firstinspires.ftc.teamcode.devices.*;
+import org.firstinspires.ftc.teamcode.devices.Drivetrain;
+import org.firstinspires.ftc.teamcode.devices.DrivetrainControls;
+import org.firstinspires.ftc.teamcode.devices.GamePadReadings;
+import org.firstinspires.ftc.teamcode.devices.Intake;
+import org.firstinspires.ftc.teamcode.devices.Launcher;
+import org.firstinspires.ftc.teamcode.devices.LauncherControls;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-import org.opencv.core.Mat;
 
 import java.util.List;
 
-@TeleOp(name = "StarterBotTeleop-2025Decode", group = "StarterBot")
+@TeleOp(name = "StarterBotTeleop-2025Decode", group = "A.StarterBot")
 //@Disabled
 public class StarterBotTeleop extends OpMode {
     /*
@@ -28,11 +33,13 @@ public class StarterBotTeleop extends OpMode {
      * at. The minimum velocity is a threshold for determining when to fire.
      */
 
-    public enum StartPosition{
+    public enum StartPosition {
         TBD,
         NEAR,
         FAR
     }
+
+
     private Launcher launcher = null;
     private Drivetrain drivetrain = null;
     private Intake intake = null;
@@ -78,7 +85,7 @@ public class StarterBotTeleop extends OpMode {
                 .setDrawTagOutline(true)
                 .setCameraPose(
                         new Position(DistanceUnit.INCH, 9, 4, 17, acquTime),
-                        new YawPitchRollAngles( AngleUnit.DEGREES,0, 15, 0, acquTime))
+                        new YawPitchRollAngles(AngleUnit.DEGREES, 0, 15, 0, acquTime))
                 // Optional: tune camera intrinsics here if you have calibration data
                 // .setLensIntrinsics(fx, fy, cx, cy)
                 .build();
@@ -103,7 +110,7 @@ public class StarterBotTeleop extends OpMode {
             telemetry.addLine("Team BLUE is selected");
         }
 
-        if (gamepad1.bWasPressed() || gamepad2.bWasPressed()){
+        if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) {
             targetTagId = 24;
             telemetry.addLine("Team RED is selected.");
         }
@@ -153,7 +160,7 @@ public class StarterBotTeleop extends OpMode {
          */
         // Sensing
         // This is the global readings.
-        GamePadReadings gamepadReading = new GamePadReadings(){{
+        GamePadReadings gamepadReading = new GamePadReadings() {{
             bButton = gamepad1.b || gamepad2.b;
             aButton = gamepad1.a || gamepad2.a;
             xButton = gamepad1.x || gamepad2.x;
@@ -162,13 +169,13 @@ public class StarterBotTeleop extends OpMode {
             rightBumper = gamepad1.right_bumper || gamepad2.right_bumper;
 
             // Since stick reading ranges from -1 to 1, we use the reading with mas absolute value.
-            leftStickX =  Math.abs(gamepad1.left_stick_x) >= Math.abs(gamepad2.left_stick_x) ?
+            leftStickX = Math.abs(gamepad1.left_stick_x) >= Math.abs(gamepad2.left_stick_x) ?
                     gamepad1.left_stick_x : gamepad2.left_stick_x;
             leftStickY = Math.abs(gamepad1.left_stick_y) >= Math.abs(gamepad2.left_stick_y) ?
                     gamepad1.left_stick_y : gamepad2.left_stick_y;
             rightStickX = Math.abs(gamepad1.right_stick_x) >= Math.abs(gamepad2.right_stick_x) ?
                     gamepad1.right_stick_x : gamepad2.right_stick_x;
-            rightStickY =  Math.abs(gamepad1.right_stick_y) >= Math.abs(gamepad2.right_stick_y) ?
+            rightStickY = Math.abs(gamepad1.right_stick_y) >= Math.abs(gamepad2.right_stick_y) ?
                     gamepad1.right_stick_y : gamepad2.right_stick_y;
 
 
@@ -198,12 +205,12 @@ public class StarterBotTeleop extends OpMode {
 
         List<AprilTagDetection> currentDetections = aprilTag.getDetections();
         for (AprilTagDetection detection : currentDetections) {
-            if (detection.metadata.id == 20){
+            if (detection.metadata.id == 20) {
                 if (targetTagId == detection.metadata.id)
                     targetTag = detection;
             }
 
-            if (detection.metadata.id == 24){
+            if (detection.metadata.id == 24) {
                 if (targetTagId == detection.metadata.id)
                     targetTag = detection;
             }
@@ -211,7 +218,7 @@ public class StarterBotTeleop extends OpMode {
 
         /* We can also use the tag position to determine the robot position for navigation.*/
 
-        if (targetTag != null){
+        if (targetTag != null) {
             double a = Math.toDegrees(Math.atan2(targetTag.ftcPose.x, targetTag.ftcPose.y));
             double d = targetTag.ftcPose.y;
             target.angle = a;
@@ -225,10 +232,9 @@ public class StarterBotTeleop extends OpMode {
         // launcher controls read from trigger and dPad to determine power apply onto flywheels and turret motors.
         LauncherControls launcherControls = LauncherControls.readControls(gamepadReading);
         // If left bumper if pressed down, we compute the powers to aim, and replace the raw controls.
-        if (gamepadReading.leftBumper && gamepadReading.rightBumper)
-        {
+        if (gamepadReading.leftBumper && gamepadReading.rightBumper) {
             double tAngle = launcher.getTurretAngle();
-            double[] rpms  = launcher.getWheelPRMs();
+            double[] rpms = launcher.getWheelPRMs();
             AimingParameters aimingParameters = LauncherControls.computeAimingParameters(target);
             telemetry.addData("target rpm", aimingParameters.launcherRpm);
             telemetry.addData("target angle", aimingParameters.shootingAngle);
@@ -251,7 +257,7 @@ public class StarterBotTeleop extends OpMode {
 
         DrivetrainControls driveTrainControls = DrivetrainControls.readControls(gamepadReading);
         // If x - aiming button is down and target visible, combine extra rotation power to aim;
-        if (gamepadReading.xButton && target != null){
+        if (gamepadReading.xButton && target != null) {
             double extraRotationPower = DrivetrainControls.computeAimingPower(target.angle, 2);
             driveTrainControls.combinePower(0, 0, extraRotationPower);
         }
@@ -260,10 +266,9 @@ public class StarterBotTeleop extends OpMode {
         ///  Actions
         intake.run(intakePower);
 
-        if (gamepadReading.bWasReleased){
+        if (gamepadReading.bWasReleased) {
             launcher.abort();
-        }
-        else
+        } else
             launcher.run(launcherControls);
 
         drivetrain.run(driveTrainControls);
