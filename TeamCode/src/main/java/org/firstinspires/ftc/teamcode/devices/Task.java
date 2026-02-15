@@ -7,6 +7,7 @@ public class Task {
     public static final int LAUNCH = 2;
     public int begin;
     public int end;
+    public boolean executed;
     public int type;
     public double target;
 
@@ -14,11 +15,13 @@ public class Task {
     public Task(int target, int type) {
         this.type = type;
         this.target = target;
+        this.executed = false;
     }
     public Task(int begin, int end, int type, double target) {
         this.begin = begin;
         this.end = end;
         this.type = type;
         this.target = target;
+        this.executed = false;
     }
 }
