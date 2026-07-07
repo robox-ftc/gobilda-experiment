@@ -10,6 +10,7 @@ public class Task {
     public boolean executed;
     public int type;
     public double target;
+    public double target2;
 
     public Task() {}
     public Task(int target, int type) {
@@ -22,6 +23,14 @@ public class Task {
         this.end = end;
         this.type = type;
         this.target = target;
+        this.executed = false;
+    }
+    public Task(int begin, int end, int type, double x, double y) {
+        this.begin = begin;
+        this.end = end;
+        this.type = type;
+        this.target = x;
+        this.target2 = y;
         this.executed = false;
     }
 }

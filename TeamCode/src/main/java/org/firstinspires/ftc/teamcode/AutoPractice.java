@@ -4,6 +4,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.devices.Drivetrain;
@@ -11,6 +12,7 @@ import org.firstinspires.ftc.teamcode.devices.DrivetrainControls;
 import org.firstinspires.ftc.teamcode.devices.Intake;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
 import org.firstinspires.ftc.teamcode.devices.Task;
+import org.firstinspires.ftc.teamcode.devices.Turret;
 
 import java.util.*;
 
@@ -22,6 +24,7 @@ public class AutoPractice extends OpMode {
     private Drivetrain drivetrain;
     private Intake intake;
     private Launcher launcher;
+    private Turret turret;
     private DrivetrainControls controls;
     private int color;
     private boolean near;
@@ -32,6 +35,7 @@ public class AutoPractice extends OpMode {
     public void init() {
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         controls = new DrivetrainControls();
+        turret = new Turret(hardwareMap, telemetry);
         telemetry.addLine("Drivetrain initialized");
         try {
             launcher = new Launcher(hardwareMap, telemetry);
