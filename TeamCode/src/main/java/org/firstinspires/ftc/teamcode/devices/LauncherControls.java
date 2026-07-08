@@ -51,8 +51,13 @@ public class LauncherControls
         LauncherControls controls = new LauncherControls();
         controls.leftWheelPower = newReadings.leftTrigger;
         controls.rightWheelPower = newReadings.leftTrigger;
-        if (newReadings.aWasReleased) {
-
+        if (newReadings.aWasPressed) {
+            controls.leftWheelPower = 0.75;
+            controls.rightWheelPower = 0.75;
+        }
+        if (newReadings.yWasPressed) {
+            controls.leftWheelPower = 1;
+            controls.rightWheelPower = 1;
         }
         controls.triggerDown = newReadings.leftBumper;
         return controls;

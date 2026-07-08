@@ -1,9 +1,12 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.devices.Drivetrain;
 import org.firstinspires.ftc.teamcode.devices.DrivetrainControls;
 import org.firstinspires.ftc.teamcode.devices.Intake;
@@ -19,52 +22,61 @@ public class NewAuto extends OpMode {
     public static final int BLUE = 1;
     private static final double TOLERANCE = 0.5; // Arbitrary
 
+    // Tunable P
+    private final double P = 1.0 / 20.0;
+    // Rotation Factor
+    private final double R = 6.0 * 12.0 / 360.0;
+
+    private GoBildaPinpointDriver pinpoint;
     private Drivetrain drivetrain;
     private Intake intake;
     private Launcher launcher;
     private Turret turret;
     private DrivetrainControls controls;
-
     private int color = BLUE;
     private int aprilTag = 20;
     private boolean near;
-
-    // Using a standard Queue instead of a time-based schedule loop
     private Queue<Task> queue;
-    private ElapsedTime timer; // Used for non-movement tasks like launching
+    private ElapsedTime timer;
+
 
     @Override
     public void init() {
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         controls = new DrivetrainControls();
-        turret = new Turret(hardwareMap, telemetry);
-
         telemetry.addLine("Drivetrain initialized");
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD); // Not necessarily correct
+        pinpoint.resetPosAndIMU();
         try {
             launcher = new Launcher(hardwareMap, telemetry);
             telemetry.addLine("Launcher initialized");
             intake = new Intake(hardwareMap, telemetry);
             telemetry.addLine("Intake initialized");
+            turret = new Turret(hardwareMap, telemetry);
+            telemetry.addLine("Camera initialized");
         } catch (Exception e) {
             launcher = null;
             intake = null;
             telemetry.addLine("Drivetrain-only started");
         }
-
         color = BLUE;
         near = true;
         queue = new LinkedList<>();
         timer = new ElapsedTime();
+        telemetry.update();
     }
 
     @Override
     public void init_loop() {
         if (gamepad1.xWasPressed() || gamepad2.xWasPressed()) {
             telemetry.addLine("Team BLUE is selected");
+            aprilTag = 20;
             color = BLUE;
         }
         if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) {
             telemetry.addLine("Team RED is selected");
+            aprilTag = 24;
             color = RED;
         }
         if (gamepad1.yWasPressed() || gamepad2.yWasPressed()) {
@@ -75,82 +87,111 @@ public class NewAuto extends OpMode {
             telemetry.addLine("Far Position is selected");
             near = false;
         }
+        telemetry.update();
     }
 
     @Override
     public void start() {
         if (near) {
             // no ROTATE immediately before LAUNCH
-            queue.add(new Task(0, 4500, Task.LAUNCH, 0.75));
-            queue.add(new Task(4500, 5000, Task.TRANSLATE, 24.0, 0.5));
-            queue.add(new Task(5000, 5500, Task.ROTATE, 0.5));
-            queue.add(new Task(10000, 10500, Task.TRANSLATE, 24.0, 0.5));
-            queue.add(new Task(12000, 12500, Task.TRANSLATE, 24.0, 0.5));
-            queue.add(new Task(20000, 21000, Task.TRANSLATE, 24.0, 0.5));
+            queue.add(new Task(0, 4500, Task.Type.LAUNCH, 0.75, 3));
+            queue.add(new Task(4500, 5000, Task.Type.TRANSLATE, 24.0, 0.5));
+            queue.add(new Task(5000, 5500, Task.Type.ROTATE, 0.5));
+            queue.add(new Task(10000, 10500, Task.Type.TRANSLATE, 24.0, 0.5));
+            queue.add(new Task(12000, 12500, Task.Type.TRANSLATE, 24.0, 0.5));
+            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, 24.0, 0.5));
         } else {
-            queue.add(new Task(0, 5000, Task.LAUNCH, 1));
-            queue.add(new Task(10000, 11000, Task.TRANSLATE, 24.0, 0.5));
-            queue.add(new Task(20000, 21000, Task.TRANSLATE, 24.0, 0.5));
+            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 1, 3));
+            queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, 24.0, 0.5));
+            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, 24.0, 0.5));
         }
         timer.reset();
     }
 
     @Override
     public void loop() {
+        controls.translationXPower = 0;
         controls.translationYPower = 0;
         controls.rotationPower = 0;
 
-//        double x = odometry.getOdometryX(); "magic function"
-//        double y = odometry.getOdometryY();
-//        double heading = odometry.getHeading();
+        pinpoint.update();
+        double x = pinpoint.getPosX(DistanceUnit.INCH);
+        double y = pinpoint.getPosY(DistanceUnit.INCH);
+        double heading = pinpoint.getHeading(AngleUnit.DEGREES);
 
         if (!queue.isEmpty()) {
             Task task = queue.peek();
 
             switch (task.type) {
-                case Task.TRANSLATE:
-//                    double error = task.target - currentY;
-//                    if (Math.abs(error) <= TOLERANCE) {
-//                        queue.remove();
-//                    } else {
-//                        controls.translationYPower = error;
-//                    }
-//                    break;
-                case Task.ROTATE:
-//                    double error = task.target - heading;
-//                    if (Math.abs(error) <= TOLERANCE) {
-//                        queue.remove();
-//                    } else {
-//                        controls.rotationPower = error;
-//                    }
-//                    break;
-                case Task.LAUNCH:
-//                    if (!task.executed) {
-//                        launcher.resetFeeder();
-//                        launcher.spinToVelocity(task.target);
-//                        task.executed = true;
-//                        timer.reset(); // Track time duration specifically for non-spatial events
-//                    } else {
-//                        launcher.fire(1);
-//                        // task.TOLERANCE can store duration limits for systemic actions
-//                        if (timer.milliseconds() >= TOLERANCE) {
-//                            launcher.fire(0);
-//                            launcher.spinToVelocity(0);
-//                            queue.remove();
-//                        }
-//                    }
-//                    break;
+                case TRANSLATE:
+                    double errorX = task.target * color - x;
+                    double errorY = task.target2 * color - y;
+                    // square distance, unlikely it'll reach the end of the task
+                    if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
+                        queue.remove();
+                    } else {
+                        controls.translationXPower = pClamp(errorX);
+                        controls.translationYPower = pClamp(errorY);
+                    }
+                    if (intake != null) {
+                        intake.spin(1);
+                    }
+                    break;
+                case ROTATE:
+                    double error = task.target * color - heading;
+                    if (error > 180) error -= 360;
+                    if (error < -180) error += 360;
+                    // Try to avoid the robot turning more than 360
+                    if (Math.abs(error) <= TOLERANCE || timer.milliseconds() > task.end) {
+                        queue.remove();
+                    } else {
+                        controls.rotationPower = pClamp(error * R);
+                    }
+                    if (intake != null) {
+                        intake.spin(0);
+                    }
+                    break;
+                case LAUNCH:
+                    if (intake != null && launcher != null) {
+                        int phase = launcherPhase(task, timer.milliseconds());
+                        if (phase == 0) {
+                            launcher.resetFeeder();
+                            launcher.spin(task.target);
+                        } else if (phase <= task.target2) {
+                            launcher.fire();
+                            intake.spin(1);
+                        } else {
+                            launcher.stopSpin();
+                            launcher.resetFeeder();
+                            queue.remove();
+                        }
+                    }
+                    break;
+                default:
+                    if (intake != null) {
+                        intake.spin(0);
+                    }
+                    break;
             }
         }
-
-        intake.spin(1);
         turret.run(aprilTag);
         drivetrain.run(controls);
-//
-//        // Telemetry Updates
-//        telemetry.addData("Current Y", y);
-//        telemetry.addData("Current Heading", h);
-//        telemetry.addData("Remaining Tasks", queue.size());
-//        telemetry.update();
+
+        telemetry.addData("Current X", x);
+        telemetry.addData("Current Y", y);
+        telemetry.addData("Current Heading", heading);
+        telemetry.addData("Remaining Tasks", queue.size());
+        telemetry.update();
+    }
+
+    private int launcherPhase(Task task, double time) {
+        int begin = task.begin;
+        int end = task.end;
+        int shots = (int) (task.target2) + 1; // +1 because of time needed to spin up, could be an int also
+        return Math.min(shots, (int) ((time - begin) * shots / (end - begin)));
+    }
+
+    private double pClamp(double error) {
+        return Math.min(Math.max(error * P, -1), 1);
     }
 }

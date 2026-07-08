@@ -77,17 +77,17 @@ public class AutoPractice extends OpMode {
     public void start() {
         // add tasks
         if (near) { // near (we aren't using them now)
-            queue.add(new Task(0, 2000, Task.TRANSLATE, 1)); // we will use target as magnitude for now
-            queue.add(new Task(1000, 2000, Task.ROTATE, 0.5));
-            queue.add(new Task(2000, 5000, Task.LAUNCH, 2000)); // this is just for future integration
-            queue.add(new Task(5000, 6000, Task.ROTATE, -0.5));
-            queue.add(new Task(5000, 7000, Task.TRANSLATE, -0.5));
+            queue.add(new Task(0, 2000, Task.Type.TRANSLATE, 1)); // we will use target as magnitude for now
+            queue.add(new Task(1000, 2000, Task.Type.ROTATE, 0.5));
+            queue.add(new Task(2000, 5000, Task.Type.LAUNCH, 2000)); // this is just for future integration
+            queue.add(new Task(5000, 6000, Task.Type.ROTATE, -0.5));
+            queue.add(new Task(5000, 7000, Task.Type.TRANSLATE, -0.5));
         } else { // far (we aren't using them now)
-            queue.add(new Task(0, 2000, Task.TRANSLATE, 1)); // we will use target as magnitude for now
-            queue.add(new Task(1000, 2000, Task.ROTATE, 0.5));
-            queue.add(new Task(2000, 5000, Task.LAUNCH, 2000)); // this is just for future integration
-            queue.add(new Task(5000, 6000, Task.ROTATE, -0.5));
-            queue.add(new Task(5000, 7000, Task.TRANSLATE, -0.5));
+            queue.add(new Task(0, 2000, Task.Type.TRANSLATE, 1)); // we will use target as magnitude for now
+            queue.add(new Task(1000, 2000, Task.Type.ROTATE, 0.5));
+            queue.add(new Task(2000, 5000, Task.Type.LAUNCH, 2000)); // this is just for future integration
+            queue.add(new Task(5000, 6000, Task.Type.ROTATE, -0.5));
+            queue.add(new Task(5000, 7000, Task.Type.TRANSLATE, -0.5));
         }
         timer.reset();
     }
@@ -104,7 +104,7 @@ public class AutoPractice extends OpMode {
             }
             if (!task.executed) {
                 execute(task);
-                if (task.type == Task.ROTATE || (task.type == Task.TRANSLATE && task.target >= 0)) { // intake only when launching or moving backwards
+                if (task.type == Task.Type.ROTATE || (task.type == Task.Type.TRANSLATE && task.target >= 0)) { // intake only when launching or moving backwards
                     flag = false;
                 }
             } else if (time >= task.end) {
@@ -121,23 +121,23 @@ public class AutoPractice extends OpMode {
     private void execute(Task task) {
         double magnitude = task.executed ? -task.target : task.target;
         switch (task.type) {
-            case Task.TRANSLATE: {
+            case TRANSLATE: {
                 controls.translationYPower += magnitude;
                 task.executed = true;
                 break;
             }
-            case Task.ROTATE: {
+            case ROTATE: {
                 controls.rotationPower += magnitude * color;
                 task.executed = true;
                 break;
             }
-            case Task.LAUNCH: {
+            case LAUNCH: {
                 if (!task.executed) {
                     launcher.resetFeeder();
                     launcher.spinToVelocity(task.target);
                     task.executed = true;
                 } else {
-                    launcher.fire(1);
+                    launcher.fire();
                 }
                 break;
             }

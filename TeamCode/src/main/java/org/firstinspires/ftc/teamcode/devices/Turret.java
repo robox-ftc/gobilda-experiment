@@ -2,8 +2,6 @@ package org.firstinspires.ftc.teamcode.devices;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
-import androidx.annotation.Nullable;
-
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -15,12 +13,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Position;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-import org.firstinspires.ftc.teamcode.data.AimingParameters;
 import org.firstinspires.ftc.teamcode.data.Target;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-import org.opencv.core.Mat;
 
 import java.util.List;
 
@@ -30,14 +26,15 @@ public class Turret {
     private final AprilTagProcessor aprilTag;
     private VisionPortal visionPortal;
     private final Telemetry telemetry;
+    private boolean auto; // run automatically
 
     private Target target;
 
     // arbitrary (tunable) constants
     private static final double TICKS_PER_SEC = 154.1 * 1150.0 / 60.0;
-    private static final double MANUAL_ROTATION_SPEED = TICKS_PER_SEC / 5.0;
-    private static final double AUTO_ROTATION_SPEED = TICKS_PER_SEC / 35.0;
-    // 70 degree FOV
+    private static final double MANUAL_ROTATION_SPEED = TICKS_PER_SEC / 3.0;
+    private static final double AUTO_ROTATION_SPEED = TICKS_PER_SEC / 22.5;
+    // 70 degree FOV, range for "close (within p)" is 45 degrees
 
     /* P[I]D
     private static final double P = 1;
@@ -50,6 +47,8 @@ public class Turret {
         wheel.setDirection(DcMotorSimple.Direction.FORWARD);
         wheel.setZeroPowerBehavior(BRAKE);
 
+        target = new Target();
+
         // Initialize AprilTag processor, the same as previous
         long time = System.nanoTime();
         aprilTag = new AprilTagProcessor.Builder().setDrawAxes(true).setDrawCubeProjection(true).setDrawTagOutline(true).setCameraPose(
@@ -61,24 +60,26 @@ public class Turret {
         visionPortal = new VisionPortal.Builder().setCamera(hardwareMap.get(WebcamName.class, "Webcam 1")).addProcessor(aprilTag).build();
 
         this.telemetry = telemetry;
+        this.auto = true;
     }
 
     public void run(int targetId) {
         // Auto
         AprilTagDetection targetTag = getAprilTag(targetId);
-        if (targetTag == null) {
-            target.angle = 0;
-        } else {
+        if (targetTag != null) {
             target.angle = Math.toDegrees(Math.atan2(targetTag.ftcPose.x, targetTag.ftcPose.y));
         }
         telemetry.addLine(target.toString());
-        wheel.setVelocity(Math.min(target.angle * AUTO_ROTATION_SPEED, TICKS_PER_SEC)); // "Fuzzy" P
+        wheel.setVelocity(pClamp(target.angle));
     }
 
     public void run(int targetId, GamePadReadings reading) {
         // TeleOp
         AprilTagDetection targetTag = getAprilTag(targetId);
-        if (reading.dPad || targetTag == null) {
+        if (reading.backWasPressed) {
+            auto = !auto;
+        }
+        if (reading.dPad || targetTag == null || !auto) {
             // manual rotation, DO NOT PRESS D-PAD ON ACCIDENT
             int rotation = (reading.dPadLeft ? -1 : 0) + (reading.dPadRight ? 1 : 0);
             wheel.setVelocity(rotation * MANUAL_ROTATION_SPEED);
@@ -87,7 +88,7 @@ public class Turret {
             // if (reading.leftBumper && reading.leftTrigger > 0) {}
             target.angle = Math.toDegrees(Math.atan2(targetTag.ftcPose.x, targetTag.ftcPose.y));
             telemetry.addLine(target.toString());
-            wheel.setVelocity(Math.min(target.angle * AUTO_ROTATION_SPEED, TICKS_PER_SEC)); // "Fuzzy" P
+            wheel.setVelocity(pClamp(target.angle));
         }
     }
 
@@ -100,6 +101,11 @@ public class Turret {
         }
         telemetry.addLine("UNABLE TO DETECT APRILTAG");
         return null;
+    }
+
+
+    private double pClamp(double angle) {
+        return Math.min(Math.max(angle * AUTO_ROTATION_SPEED, -TICKS_PER_SEC), TICKS_PER_SEC);
     }
 
 //    private double PID(double angle, double prev) {
