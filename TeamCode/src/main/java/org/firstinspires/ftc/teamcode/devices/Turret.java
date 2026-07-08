@@ -78,6 +78,7 @@ public class Turret {
         AprilTagDetection targetTag = getAprilTag(targetId);
         if (reading.backWasPressed) {
             auto = !auto;
+            telemetry.addData("Auto-align: ", auto);
         }
         if (reading.dPad || targetTag == null || !auto) {
             // manual rotation, DO NOT PRESS D-PAD ON ACCIDENT

@@ -20,7 +20,7 @@ import java.util.*;
 public class NewAuto extends OpMode {
     public static final int RED = -1;
     public static final int BLUE = 1;
-    private static final double TOLERANCE = 0.5; // Arbitrary
+    private static final double TOLERANCE = 1; // Arbitrary
 
     // Tunable P
     private final double P = 1.0 / 20.0;
@@ -53,12 +53,17 @@ public class NewAuto extends OpMode {
             telemetry.addLine("Launcher initialized");
             intake = new Intake(hardwareMap, telemetry);
             telemetry.addLine("Intake initialized");
-            turret = new Turret(hardwareMap, telemetry);
-            telemetry.addLine("Camera initialized");
         } catch (Exception e) {
             launcher = null;
             intake = null;
             telemetry.addLine("Drivetrain-only started");
+        }
+        try {
+            turret = new Turret(hardwareMap, telemetry);
+            telemetry.addLine("Camera initialized");
+        } catch (Exception e) {
+            turret = null;
+            telemetry.addLine("No-turret started");
         }
         color = BLUE;
         near = true;
@@ -119,6 +124,8 @@ public class NewAuto extends OpMode {
         double y = pinpoint.getPosY(DistanceUnit.INCH);
         double heading = pinpoint.getHeading(AngleUnit.DEGREES);
 
+        if (turret != null) turret.run(aprilTag);
+
         if (!queue.isEmpty()) {
             Task task = queue.peek();
 
@@ -142,7 +149,7 @@ public class NewAuto extends OpMode {
                     if (error > 180) error -= 360;
                     if (error < -180) error += 360;
                     // Try to avoid the robot turning more than 360
-                    if (Math.abs(error) <= TOLERANCE || timer.milliseconds() > task.end) {
+                    if (Math.abs(error * R) <= TOLERANCE || timer.milliseconds() > task.end) {
                         queue.remove();
                     } else {
                         controls.rotationPower = pClamp(error * R);
@@ -161,21 +168,23 @@ public class NewAuto extends OpMode {
                             launcher.fire();
                             intake.spin(1);
                         } else {
-                            launcher.stopSpin();
-                            launcher.resetFeeder();
+                            launcher.abort();
                             queue.remove();
                         }
                     }
                     break;
                 default:
-                    if (intake != null) {
-                        intake.spin(0);
-                    }
                     break;
             }
+        } else {
+            if (intake != null) {
+                intake.spin(0);
+            }
+            if (launcher != null) {
+                launcher.abort();
+            }
         }
-        turret.run(aprilTag);
-        drivetrain.run(controls);
+        if (drivetrain != null) drivetrain.run(controls);
 
         telemetry.addData("Current X", x);
         telemetry.addData("Current Y", y);
@@ -185,10 +194,14 @@ public class NewAuto extends OpMode {
     }
 
     private int launcherPhase(Task task, double time) {
-        int begin = task.begin;
-        int end = task.end;
-        int shots = (int) (task.target2) + 1; // +1 because of time needed to spin up, could be an int also
-        return Math.min(shots, (int) ((time - begin) * shots / (end - begin)));
+        try {
+            int begin = task.begin;
+            int end = task.end;
+            int shots = (int) (task.target2) + 1; // +1 because of time needed to spin up, could be an int also
+            return Math.min(shots, (int) ((time - begin) * shots / (end - begin)));
+        } catch (Exception e) {
+            return (int) (task.target2 + 1); // end
+        }
     }
 
     private double pClamp(double error) {
