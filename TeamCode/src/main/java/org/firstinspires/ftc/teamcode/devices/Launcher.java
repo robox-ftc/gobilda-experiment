@@ -17,9 +17,7 @@ public class Launcher {
     public static double LAUNCHER_MAX_VELOCITY_RPM = 1620;
     public static double LAUNCHER_MAX_VELOCITY_DPS = LAUNCHER_MAX_VELOCITY_RPM / 60.0;
     public static double ERROR_RATE = 0.1;
-    public static double FEEDER_ANGLE_SPAN = 300.0; // 300.0 for goblida 2000-2500-0002
     final double STOP_POWER = 0.0; // We send this power to the servos when we want them to stop.
-    public static double FEED_TIME_SECONDS = 0.20; // The feeder servos run this long when a shot is requested.
 
     public enum LaunchState {
         IDLE,

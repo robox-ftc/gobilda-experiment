@@ -59,7 +59,7 @@ public class LauncherControls
             controls.leftWheelPower = 1;
             controls.rightWheelPower = 1;
         }
-        controls.triggerDown = newReadings.leftBumper;
+        controls.triggerDown = newReadings.leftBumper || newReadings.rightBumper;
         return controls;
     }
 }

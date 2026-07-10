@@ -1,7 +1,11 @@
 
 package org.firstinspires.ftc.teamcode;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.devices.*;
 
 @TeleOp(name = "Teleop-2026Decode", group = "StarterBot")
@@ -15,6 +19,7 @@ public class NewTeleop extends OpMode {
     private Launcher launcher;
     private Drivetrain drivetrain;
     private Intake intake;
+    private GoBildaPinpointDriver pinpoint;
     private Turret turret;
     private int targetTagId = 20;
     private StartPosition startPosition = StartPosition.NEAR;
@@ -27,7 +32,12 @@ public class NewTeleop extends OpMode {
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         launcher = new Launcher(hardwareMap, telemetry);
         intake = new Intake(hardwareMap, telemetry);
-        telemetry.addData("Status", "Motors Initialized");
+        telemetry.addData("Status: ", "Motors Initialized");
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD); // Not necessarily correct
+        pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH);
+        pinpoint.resetPosAndIMU();
+        telemetry.addData("Status: ", "Odo Initialized");
         turret = new Turret(hardwareMap, telemetry);
         telemetry.addLine("Camera initialized. Waiting for start...");
         telemetry.update();
@@ -76,18 +86,20 @@ public class NewTeleop extends OpMode {
         // Sensing
         // This is the global readings.
         gamePadReading.update(gamepad1, gamepad2);
+        pinpoint.update();
+        double heading = pinpoint.getHeading(AngleUnit.DEGREES);
 
         DrivetrainControls driveControls = DrivetrainControls.readControls(gamePadReading);
         LauncherControls launcherControls = LauncherControls.readControls(gamePadReading);
-        double intakePower = gamePadReading.rightBumper ? 1.0 : Math.max(gamePadReading.rightTrigger, gamePadReading.leftTrigger);
+        double intakePower = gamePadReading.rightBumper ? -1.0 : Math.max(gamePadReading.rightTrigger, gamePadReading.leftTrigger);
         intake.run(intakePower);
-        turret.run(targetTagId, gamePadReading);
-
-        if (gamePadReading.bWasReleased) {
-            launcher.abort();
-        } else launcher.run(launcherControls);
+        turret.run(targetTagId, heading, gamePadReading);
+        launcher.run(launcherControls);
 
         drivetrain.run(driveControls);
+        telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));
+        telemetry.addData("Y", pinpoint.getPosY(DistanceUnit.INCH));
+        telemetry.addData("Heading", heading);
         telemetry.update();
     }
 }

@@ -21,11 +21,12 @@ public class NewAuto extends OpMode {
     public static final int RED = -1;
     public static final int BLUE = 1;
     private static final double TOLERANCE = 1; // Arbitrary
+    private static final double RTOLERANCE = 5; // Arbitrary
 
     // Tunable P
     private final double P = 1.0 / 20.0;
     // Rotation Factor
-    private final double R = 6.0 * 12.0 / 360.0;
+    private final double R = 2 * 12.0 / 360.0;
 
     private GoBildaPinpointDriver pinpoint;
     private Drivetrain drivetrain;
@@ -39,14 +40,14 @@ public class NewAuto extends OpMode {
     private Queue<Task> queue;
     private ElapsedTime timer;
 
-
     @Override
     public void init() {
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         controls = new DrivetrainControls();
         telemetry.addLine("Drivetrain initialized");
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
-        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD); // Not necessarily correct
+        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH);
         pinpoint.resetPosAndIMU();
         try {
             launcher = new Launcher(hardwareMap, telemetry);
@@ -110,6 +111,10 @@ public class NewAuto extends OpMode {
             queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, 24.0, 0.5));
             queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, 24.0, 0.5));
         }
+        if (turret != null && pinpoint != null) {
+            pinpoint.update();
+            turret.setTarget(aprilTag, pinpoint.getHeading(AngleUnit.DEGREES));
+        }
         timer.reset();
     }
 
@@ -123,8 +128,6 @@ public class NewAuto extends OpMode {
         double x = pinpoint.getPosX(DistanceUnit.INCH);
         double y = pinpoint.getPosY(DistanceUnit.INCH);
         double heading = pinpoint.getHeading(AngleUnit.DEGREES);
-
-        if (turret != null) turret.run(aprilTag);
 
         if (!queue.isEmpty()) {
             Task task = queue.peek();
@@ -149,7 +152,7 @@ public class NewAuto extends OpMode {
                     if (error > 180) error -= 360;
                     if (error < -180) error += 360;
                     // Try to avoid the robot turning more than 360
-                    if (Math.abs(error * R) <= TOLERANCE || timer.milliseconds() > task.end) {
+                    if (Math.abs(error) <= RTOLERANCE || timer.milliseconds() > task.end) {
                         queue.remove();
                     } else {
                         controls.rotationPower = pClamp(error * R);
@@ -162,6 +165,7 @@ public class NewAuto extends OpMode {
                     if (intake != null && launcher != null) {
                         int phase = launcherPhase(task, timer.milliseconds());
                         if (phase == 0) {
+                            if (turret != null) turret.run(heading);
                             launcher.resetFeeder();
                             launcher.spin(task.target);
                         } else if (phase <= task.target2) {
@@ -182,6 +186,9 @@ public class NewAuto extends OpMode {
             }
             if (launcher != null) {
                 launcher.abort();
+            }
+            if (turret != null) {
+                turret.resetTurret();
             }
         }
         if (drivetrain != null) drivetrain.run(controls);
