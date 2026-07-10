@@ -26,7 +26,7 @@ public class Drivetrain {
         init(hardwareMap, auto);
     }
 
-    public void init(HardwareMap hardwareMap, boolean auto){
+    public void init(HardwareMap hardwareMap, boolean auto) {
         frontLeftDrive = hardwareMap.get(DcMotorEx.class, "lfdrive");
         frontRightDrive = hardwareMap.get(DcMotorEx.class, "rfdrive");
         rearLeftDrive = hardwareMap.get(DcMotorEx.class, "lbdrive");

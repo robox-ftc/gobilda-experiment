@@ -37,6 +37,7 @@ public class NewAuto extends OpMode {
     private int color = BLUE;
     private int aprilTag = 20;
     private boolean near;
+    private boolean stay;
     private Queue<Task> queue;
     private ElapsedTime timer;
 
@@ -93,23 +94,28 @@ public class NewAuto extends OpMode {
             telemetry.addLine("Far Position is selected");
             near = false;
         }
+        if (gamepad1.backWasPressed() || gamepad2.backWasPressed()) {
+            telemetry.addData("Stay Auto is selected to be: ", stay);
+            stay = !stay;
+        }
         telemetry.update();
     }
 
     @Override
     public void start() {
-        if (near) {
+        if (stay) {
+            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
+        } else if (near) {
             // no ROTATE immediately before LAUNCH
-            queue.add(new Task(0, 4500, Task.Type.LAUNCH, 0.75, 3));
-            queue.add(new Task(4500, 5000, Task.Type.TRANSLATE, 24.0, 0.5));
-            queue.add(new Task(5000, 5500, Task.Type.ROTATE, 0.5));
-            queue.add(new Task(10000, 10500, Task.Type.TRANSLATE, 24.0, 0.5));
-            queue.add(new Task(12000, 12500, Task.Type.TRANSLATE, 24.0, 0.5));
-            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, 24.0, 0.5));
+            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
+            queue.add(new Task(5000, 5500, Task.Type.TRANSLATE, 0, -12));
+            queue.add(new Task(10000, 10500, Task.Type.TRANSLATE, -12, -24));
+            queue.add(new Task(12000, 12500, Task.Type.TRANSLATE, -15, -28));
+            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -14, -26));
         } else {
             queue.add(new Task(0, 5000, Task.Type.LAUNCH, 1, 3));
-            queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, 24.0, 0.5));
-            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, 24.0, 0.5));
+            queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, -1, 0.5));
+            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -1.5, 1));
         }
         if (turret != null && pinpoint != null) {
             pinpoint.update();

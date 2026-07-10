@@ -7,6 +7,7 @@ import org.firstinspires.ftc.teamcode.utils.Utils;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -46,8 +47,8 @@ public class Launcher {
         DcMotorEx[] launchers = new DcMotorEx[2];
         launchers[0] = launcherLeft;
         launchers[1] = launcherRight;
-        launcherLeft.setDirection(DcMotor.Direction.REVERSE);
-        launcherRight.setDirection(DcMotor.Direction.FORWARD);
+        launcherLeft.setDirection(DcMotor.Direction.FORWARD);
+        launcherRight.setDirection(DcMotor.Direction.REVERSE);
         // for now, to be changed
         Utils.applyAction(launchers, (motor) -> motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER));
         Utils.applyAction(launchers, (motor) -> motor.setZeroPowerBehavior(FLOAT));

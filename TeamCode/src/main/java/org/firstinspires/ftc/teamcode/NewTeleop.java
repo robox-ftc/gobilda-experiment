@@ -22,6 +22,7 @@ public class NewTeleop extends OpMode {
     private GoBildaPinpointDriver pinpoint;
     private Turret turret;
     private int targetTagId = 20;
+    private final double TOLERANCE = 0.1;
     private StartPosition startPosition = StartPosition.NEAR;
     /*
      * Code to run ONCE when the driver hits INIT
@@ -92,7 +93,7 @@ public class NewTeleop extends OpMode {
         DrivetrainControls driveControls = DrivetrainControls.readControls(gamePadReading);
         LauncherControls launcherControls = LauncherControls.readControls(gamePadReading);
         double intakePower = gamePadReading.rightBumper ? -1.0 : Math.max(gamePadReading.rightTrigger, gamePadReading.leftTrigger);
-        intake.run(intakePower);
+        intake.spin(intakePower);
         turret.run(targetTagId, heading, gamePadReading);
         launcher.run(launcherControls);
 

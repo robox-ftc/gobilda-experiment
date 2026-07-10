@@ -27,9 +27,8 @@ public class Intake {
     }
 
 
-    public void run(double manualPower){
-        double autoPower = 1.0;
-        double targetPower = Math.max(-1.0, Math.min(1.0, manualPower + autoPower));
+    public void run(double manualPower) { // changed, formula was flawed
+        double targetPower = Math.max(-1.0, Math.min(1.0, manualPower)); // clamp
         spin(targetPower);
     }
 }
