@@ -16,7 +16,7 @@ import org.firstinspires.ftc.teamcode.devices.Turret;
 
 import java.util.*;
 
-@Autonomous(name = "Teleop-2026Decode-Odo", group = "Robot")
+@Autonomous(name = "Auto-2026Decode", group = "Robot")
 public class NewAuto extends OpMode {
     public static final int RED = -1;
     public static final int BLUE = 1;
@@ -114,8 +114,8 @@ public class NewAuto extends OpMode {
             queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -14, -26));
         } else {
             queue.add(new Task(0, 5000, Task.Type.LAUNCH, 1, 3));
-            queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, -1, 0.5));
-            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -1.5, 1));
+            queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, -12, 6));
+            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -18, 12));
         }
         if (turret != null && pinpoint != null) {
             pinpoint.update();
@@ -141,7 +141,7 @@ public class NewAuto extends OpMode {
             switch (task.type) {
                 case TRANSLATE:
                     double errorX = task.target * color - x;
-                    double errorY = task.target2 * color - y;
+                    double errorY = task.target2 - y;
                     // square distance, unlikely it'll reach the end of the task
                     if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
                         queue.remove();
@@ -171,7 +171,7 @@ public class NewAuto extends OpMode {
                     if (intake != null && launcher != null) {
                         int phase = launcherPhase(task, timer.milliseconds());
                         if (phase == 0) {
-                            if (turret != null) turret.run(heading);
+//                            if (turret != null) turret.run(heading);
                             launcher.resetFeeder();
                             launcher.spin(task.target);
                         } else if (phase <= task.target2) {
@@ -184,6 +184,9 @@ public class NewAuto extends OpMode {
                     }
                     break;
                 default:
+                    controls.translationXPower = 0;
+                    controls.translationYPower = 0;
+                    controls.rotationPower = 0;
                     break;
             }
         } else {
