@@ -44,6 +44,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -91,8 +92,9 @@ public class StarterBotAuto extends OpMode {
      * at. The minimum velocity is a threshold for determining when to fire.
      */
     final double LAUNCHER_TARGET_VELOCITY_1 = 2050;
-    final double LAUNCHER_TARGET_VELOCITY_2 = 2275;
     final double LAUNCHER_TARGET_VELOCITY_3 = 2500;
+    final double LAUNCHER_TARGET_VELOCITY_2 = (LAUNCHER_TARGET_VELOCITY_1 + LAUNCHER_TARGET_VELOCITY_3) / 2;
+
     /*
      * The number of seconds that we wait between each of our 3 shots from the
      * launcher. This
@@ -175,6 +177,11 @@ public class StarterBotAuto extends OpMode {
     private AprilTagProcessor aprilTag = null;
     protected VisionPortal portal = null;
     protected AprilTagDetection targetTag = null;
+
+    protected Pose2D pos = null;
+    private VoltageSensor batteryVoltageSensor = null;
+    protected double voltage;
+
 
     /*
      * TECH TIP: State Machines
@@ -409,6 +416,9 @@ public class StarterBotAuto extends OpMode {
                     .build();
         }
 
+        batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
+        voltage = batteryVoltageSensor.getVoltage();
+
         // Tell the driver that initialization is complete.
         telemetry.addData("Status", "Initialized");
     }
@@ -505,12 +515,9 @@ public class StarterBotAuto extends OpMode {
          * one case,
          * we know our enum isn't reflecting a different state.
          */
-        String data = "";
         if (odo != null) {
             odo.update();
-            Pose2D pos = odo.getPosition();
-            data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM),
-                    pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
+            pos = odo.getPosition();
         }
 
         targetTag = locateTarget(targetTagId);
@@ -698,19 +705,7 @@ public class StarterBotAuto extends OpMode {
          * after the last "case" that runs every loop. This means we can avoid a lot of
          * "copy-and-paste" that non-state machine autonomous routines fall into.
          */
-        telemetry.addData("AutoState", autonomousState);
-        telemetry.addData("LauncherState", launchState);
-        telemetry.addData("Motor Current Positions", "left (%d), right (%d)",
-                leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
-        telemetry.addData("Motor Target Positions", "left (%d), right (%d)",
-                leftFrontDrive.getTargetPosition(), rightFrontDrive.getTargetPosition());
-        telemetry.addData("Position", data);
-        if (targetTag != null) {
-            telemetry.addData("Tag ID", targetTag.metadata.id);
-            telemetry.addData("Tag X", targetTag.ftcPose.x);
-            telemetry.addData("Tag Y", targetTag.ftcPose.y);
-        }
-        telemetry.update();
+        updateTelemetry();
     }
 
     /*
@@ -764,8 +759,9 @@ public class StarterBotAuto extends OpMode {
                 if (!drivetrainOnly) {
                     applyAction(launchers, (launcher) -> launcher.setVelocity(launcherSpeed));
 
-                    if (launchers[0].getVelocity() > launcherSpeed - 50
-                            && launchers[1].getVelocity() > launcherSpeed - 50) {
+                    if (Math.abs(launchers[0].getVelocity() - launcherSpeed) < 20
+                            && Math.abs(launchers[1].getVelocity() - launcherSpeed) < 20
+                            && Math.abs(launchers[0].getVelocity() - launchers[1].getVelocity()) < 10) {
                         launchState = LaunchState.LAUNCH;
                         feederTimer.reset();
                     }
@@ -976,5 +972,39 @@ public class StarterBotAuto extends OpMode {
                 * (x_pos > 0 ? 1 : -1);
         mecanumDrive(0, 0, rotate_power);
         return x_pos;
+    }
+
+    protected void updateTelemetry() {
+        telemetry.addData("Team", alliance);
+        telemetry.addData("AutoState", autonomousState);
+        telemetry.addData("LauncherState", launchState);
+
+        if (targetTag != null) {
+            telemetry.addData("Tag ID", targetTag.metadata.id);
+            telemetry.addData("Tag Location",
+                    String.format(Locale.US, "{X: %.3f, Y: %.3f}", targetTag.ftcPose.x, targetTag.ftcPose.y));
+        }
+        if (!drivetrainOnly) {
+            telemetry.addData("Motor Speed", "left (%.0f), right (%.0f)", launchers[0].getVelocity(),
+                    launchers[1].getVelocity());
+        }
+        telemetry.addData("Motor Target Positions", "left (%d), right (%d)",
+                leftFrontDrive.getTargetPosition(), rightFrontDrive.getTargetPosition());
+        telemetry.addData("Motor Current Positions", "left (%d), right (%d)",
+                leftFrontDrive.getCurrentPosition(), rightFrontDrive.getCurrentPosition());
+
+        if (pos != null) {
+            String data = String.format(Locale.US, "{X: %.3f, Y: %.3f, H: %.3f}", pos.getX(DistanceUnit.MM),
+                    pos.getY(DistanceUnit.MM), pos.getHeading(AngleUnit.DEGREES));
+            telemetry.addData("Position", data);
+        }
+
+        // Display the voltage on the Driver Station
+        telemetry.addData("Control Hub Battery Voltage", "%.2f V, %.2f%%", voltage, voltage / 12 * 100);
+
+        if (portal != null) {
+            telemetry.addData("Camera Status", portal.getCameraState());
+        }
+        telemetry.update();
     }
 }
