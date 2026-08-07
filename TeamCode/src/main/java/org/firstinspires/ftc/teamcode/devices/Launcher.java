@@ -105,6 +105,10 @@ public class Launcher {
         return launcherRight.getVelocity() / RRP * 60;
     }
 
+    // How long the wheels must have been driving forward before the feeder runs.
+    // Set to 0 to feed immediately.
+    public static double SPIN_UP_TIME = 0.4; // seconds
+
     public void manualLaunch(LauncherControls controls) {
         // debug the relation between ticks and angle, remove later
         telemetry.addData("RPM-left", this.getLeftWheelRPM());
@@ -113,10 +117,20 @@ public class Launcher {
         launcherLeft.setPower(controls.leftWheelPower);
         launcherRight.setPower(controls.rightWheelPower);
 
-        if (controls.triggerDown)
+        // Restart the clock whenever the wheels are not driving forward, so the
+        // timer always reads "how long have we been spinning up".
+        if (controls.leftWheelPower <= 0) {
+            timer.reset();
+        }
+        boolean upToSpeed = timer.seconds() >= SPIN_UP_TIME;
+
+        if (controls.triggerDown && upToSpeed) {
             fire();
-        else
+            telemetry.addData("Launcher", "FIRING");
+        } else {
             resetFeeder();
+            telemetry.addData("Launcher", controls.triggerDown ? "spinning up" : "idle");
+        }
     }
 
     public void abort() {

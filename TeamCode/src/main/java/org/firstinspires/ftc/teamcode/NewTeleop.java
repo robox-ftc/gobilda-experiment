@@ -39,8 +39,15 @@ public class NewTeleop extends OpMode {
         pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH);
         pinpoint.resetPosAndIMU();
         telemetry.addData("Status: ", "Odo Initialized");
-        turret = new Turret(hardwareMap, telemetry);
-        telemetry.addLine("Camera initialized. Waiting for start...");
+        try {
+            turret = new Turret(hardwareMap, telemetry);
+            telemetry.addLine("Camera initialized. Waiting for start...");
+        } catch (Exception e) {
+            // A missing webcam must not cost us the whole TeleOp - drive and
+            // shoot still work, only auto-aim is gone.
+            turret = null;
+            telemetry.addLine("NO TURRET/CAMERA - driving and launching still available");
+        }
         telemetry.update();
     }
 
@@ -92,10 +99,28 @@ public class NewTeleop extends OpMode {
 
         DrivetrainControls driveControls = DrivetrainControls.readControls(gamePadReading);
         LauncherControls launcherControls = LauncherControls.readControls(gamePadReading);
-        double intakePower = gamePadReading.rightBumper ? -1.0 : Math.max(gamePadReading.rightTrigger, gamePadReading.leftTrigger);
+
+        /*
+         * The intake has to push the ball into the feeder for a shot to happen, so
+         * firing takes it over. B stays the "eject everything" button: the launcher
+         * wheels already reverse on B, and the intake now reverses with them.
+         * Otherwise the triggers run it in.
+         */
+        double intakePower;
+        if (launcherControls.triggerDown) {
+            intakePower = 1.0;
+        } else if (gamePadReading.bButton) {
+            intakePower = -1.0;
+        } else {
+            intakePower = Math.max(gamePadReading.rightTrigger, gamePadReading.leftTrigger);
+        }
         intake.spin(intakePower);
-        turret.run(targetTagId, heading, gamePadReading);
+
+        if (turret != null) {
+            turret.run(targetTagId, heading, gamePadReading);
+        }
         launcher.run(launcherControls);
+        telemetry.addData("Intake", "%.2f", intakePower);
 
         drivetrain.run(driveControls);
         telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));

@@ -17,7 +17,9 @@ public class Intake {
     public Intake(HardwareMap hardwareMap, Telemetry telemetry) {
         wheel = hardwareMap.get(DcMotorEx.class, "intake");
         wheel.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        wheel.setDirection(DcMotorSimple.Direction.REVERSE);
+        // FORWARD so that positive power pulls a ball in and negative ejects it.
+        // Every caller (NewTeleop, NewAuto, AutoPractice) assumes spin(+1) = intake.
+        wheel.setDirection(DcMotorSimple.Direction.FORWARD);
         wheel.setZeroPowerBehavior(FLOAT);
         this.telemetry = telemetry;
     }

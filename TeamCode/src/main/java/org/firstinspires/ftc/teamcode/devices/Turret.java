@@ -65,8 +65,22 @@ public class Turret {
         this.telemetry = telemetry;
         this.auto = true;
     }
+    /**
+     * True only when the camera is actually streaming. The VisionPortal can be
+     * built successfully and still end up in ERROR (webcam unplugged, USB fault),
+     * in which case there are no detections and auto-aim would swing the turret
+     * to a stale or zeroed target.
+     */
+    public boolean hasCamera() {
+        return visionPortal != null && visionPortal.getCameraState() == VisionPortal.CameraState.STREAMING;
+    }
+
     public void setTarget(int targetID, double heading) {
         // Auto
+        if (!hasCamera()) {
+            telemetry.addLine("NO CAMERA - cannot acquire target");
+            return;
+        }
         AprilTagDetection targetTag = getAprilTag(targetID);
         if (targetTag != null) {
             target.angle = Math.toDegrees(Math.atan2(targetTag.ftcPose.x, targetTag.ftcPose.y));
@@ -88,13 +102,24 @@ public class Turret {
 
     public void run(int targetId, double angle, GamePadReadings reading) {
         // TeleOp
+        boolean cameraOk = hasCamera();
+        if (!cameraOk && auto) {
+            // No camera means no detections, so auto-aim can only chase a stale
+            // target. Drop to manual and leave it there until the driver opts in.
+            auto = false;
+            if (wheel.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
+                wheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+                wheel.setVelocity(0);
+            }
+        }
         if (reading.backWasPressed) {
-            auto = !auto;
+            auto = cameraOk && !auto;
             if (!auto && wheel.getMode() != DcMotor.RunMode.RUN_USING_ENCODER) {
                 wheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             }
             telemetry.addData("Auto-align: ", auto);
         }
+        telemetry.addData("Camera", cameraOk ? "streaming" : "UNAVAILABLE - manual turret only");
         if (reading.xWasPressed) { // Find Target
             setTarget(targetId, angle);
         }

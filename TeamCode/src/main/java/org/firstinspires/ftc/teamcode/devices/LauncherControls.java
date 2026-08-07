@@ -47,6 +47,9 @@ public class LauncherControls
     }
 
 
+    // Wheel power used when the driver asks to fire without having spun up first.
+    public static final double DEFAULT_LAUNCH_POWER = 0.75;
+
     public static LauncherControls readControls(GamePadReadings newReadings) {
         LauncherControls controls = new LauncherControls();
         controls.leftWheelPower = newReadings.leftTrigger;
@@ -64,6 +67,13 @@ public class LauncherControls
             controls.rightWheelPower = -0.75;
         }
         controls.triggerDown = newReadings.leftBumper || newReadings.rightBumper;
+
+        // Feeding a ball into stopped wheels just jams it, so a bare fire press
+        // spins the wheels up too. B (eject) keeps its negative power.
+        if (controls.triggerDown && controls.leftWheelPower == 0) {
+            controls.leftWheelPower = DEFAULT_LAUNCH_POWER;
+            controls.rightWheelPower = DEFAULT_LAUNCH_POWER;
+        }
         return controls;
     }
 }
