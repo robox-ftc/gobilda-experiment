@@ -7,7 +7,6 @@ import org.firstinspires.ftc.teamcode.utils.Utils;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -124,12 +123,12 @@ public class Launcher {
         }
         boolean upToSpeed = timer.seconds() >= SPIN_UP_TIME;
 
-        if (controls.triggerDown && upToSpeed) {
+        if (controls.bumperDown && upToSpeed) {
             fire();
             telemetry.addData("Launcher", "FIRING");
         } else {
             resetFeeder();
-            telemetry.addData("Launcher", controls.triggerDown ? "spinning up" : "idle");
+            telemetry.addData("Launcher", controls.bumperDown ? "spinning up" : "idle");
         }
     }
 

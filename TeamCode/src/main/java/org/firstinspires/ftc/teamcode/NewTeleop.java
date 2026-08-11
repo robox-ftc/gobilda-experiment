@@ -24,6 +24,8 @@ public class NewTeleop extends OpMode {
     private int targetTagId = 20;
     private final double TOLERANCE = 0.1;
     private StartPosition startPosition = StartPosition.NEAR;
+    private Hood hood;
+    double hoodPower = 0;
     /*
      * Code to run ONCE when the driver hits INIT
      */
@@ -33,6 +35,7 @@ public class NewTeleop extends OpMode {
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         launcher = new Launcher(hardwareMap, telemetry);
         intake = new Intake(hardwareMap, telemetry);
+        hood = new Hood(hardwareMap, telemetry);
         telemetry.addData("Status: ", "Motors Initialized");
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
         pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD); // Not necessarily correct
@@ -48,7 +51,6 @@ public class NewTeleop extends OpMode {
             turret = null;
             telemetry.addLine("NO TURRET/CAMERA - driving and launching still available");
         }
-        telemetry.update();
     }
 
     /*
@@ -73,7 +75,6 @@ public class NewTeleop extends OpMode {
             startPosition = StartPosition.NEAR;
             telemetry.addLine("Starting position NEAR.");
         }
-        telemetry.update();
     }
 
     /*
@@ -106,26 +107,37 @@ public class NewTeleop extends OpMode {
          * wheels already reverse on B, and the intake now reverses with them.
          * Otherwise the triggers run it in.
          */
+
+        double hoodPower = 0;
         double intakePower;
-        if (launcherControls.triggerDown) {
+
+        if (launcherControls.rightTrigger) {
             intakePower = 1.0;
-        } else if (gamePadReading.bButton) {
+            hoodPower = intakePower;
+        } else if (gamePadReading.bButton || launcherControls.leftTrigger) {
             intakePower = -1.0;
+            hoodPower = intakePower;
         } else {
             intakePower = Math.max(gamePadReading.rightTrigger, gamePadReading.leftTrigger);
+            if (gamePadReading.rightTrigger > gamePadReading.leftTrigger) {
+                hoodPower = 1.0;
+            } else if (gamePadReading.leftTrigger > gamePadReading.rightTrigger) {
+                hoodPower = -1.0;
+            }
         }
         intake.spin(intakePower);
+        Hood.spin(hoodPower);
 
-        if (turret != null) {
-            turret.run(targetTagId, heading, gamePadReading);
+            if (turret != null) {
+                turret.run(targetTagId, heading, gamePadReading);
+            }
+            launcher.run(launcherControls);
+            telemetry.addData("Intake", "%.2f", intakePower);
+            telemetry.addData("Hood", "%.2f", hoodPower);
+            drivetrain.run(driveControls);
+            telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));
+            telemetry.addData("Y", pinpoint.getPosY(DistanceUnit.INCH));
+            telemetry.addData("Heading", heading);
+            telemetry.update();
         }
-        launcher.run(launcherControls);
-        telemetry.addData("Intake", "%.2f", intakePower);
-
-        drivetrain.run(driveControls);
-        telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));
-        telemetry.addData("Y", pinpoint.getPosY(DistanceUnit.INCH));
-        telemetry.addData("Heading", heading);
-        telemetry.update();
     }
-}

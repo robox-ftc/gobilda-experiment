@@ -1,24 +1,23 @@
 package org.firstinspires.ftc.teamcode.devices;
 
-import org.firstinspires.ftc.teamcode.data.AimingParameters;
-import org.firstinspires.ftc.teamcode.data.Target;
-
 public class LauncherControls
 {
     public double leftWheelPower;
     public double rightWheelPower;
-    public boolean triggerDown;
+    public boolean bumperDown;
+    public boolean leftTrigger;
+    public boolean rightTrigger;
 
     public LauncherControls() {
         this.leftWheelPower = 0.0;
         this.rightWheelPower = 0.0;
-        this.triggerDown = false;
+        this.bumperDown = false;
     }
 
     public LauncherControls(double wheelPower, boolean triggerDown) {
         this.leftWheelPower = wheelPower;
         this.rightWheelPower = wheelPower;
-        this.triggerDown = triggerDown;
+        this.bumperDown = triggerDown;
     }
 
 
@@ -26,7 +25,7 @@ public class LauncherControls
     {
         this.leftWheelPower = leftWheelPower;
         this.rightWheelPower = rightWheelPower;
-        this.triggerDown = triggerDown;
+        this.bumperDown = triggerDown;
     }
 
     public static double computeTurretRotationPower(double currentAngle, double targetAngle, double tolerance){
@@ -66,11 +65,13 @@ public class LauncherControls
             controls.leftWheelPower = -0.75;
             controls.rightWheelPower = -0.75;
         }
-        controls.triggerDown = newReadings.leftBumper || newReadings.rightBumper;
+        controls.bumperDown = newReadings.leftBumper || newReadings.rightBumper;
+        controls.leftTrigger =  newReadings.leftBumper;
+        controls.rightTrigger = newReadings.rightBumper;
 
         // Feeding a ball into stopped wheels just jams it, so a bare fire press
         // spins the wheels up too. B (eject) keeps its negative power.
-        if (controls.triggerDown && controls.leftWheelPower == 0) {
+        if (controls.bumperDown && controls.leftWheelPower == 0) {
             controls.leftWheelPower = DEFAULT_LAUNCH_POWER;
             controls.rightWheelPower = DEFAULT_LAUNCH_POWER;
         }
