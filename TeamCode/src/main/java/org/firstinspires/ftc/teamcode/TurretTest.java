@@ -61,9 +61,13 @@ public class TurretTest extends OpMode {
         if (targetTag != null) {
             target.angle = Math.toDegrees(Math.atan2(targetTag.ftcPose.x, targetTag.ftcPose.y));
             telemetry.addLine(target.toString());
+        } else {
+            wheel.setVelocity(ROTATION_SPEED);
         }
         if (Math.abs(target.angle) > TOLERANCE) {
             wheel.setVelocity(pClamp(target.angle));
+        } else {
+            wheel.setVelocity(0);
         }
     }
     public AprilTagDetection getAprilTag(int targetId) {
