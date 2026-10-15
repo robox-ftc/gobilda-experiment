@@ -51,7 +51,7 @@ public class BIOBUZZAuto extends OpMode {
         telemetry.addLine("Drivetrain initialized");
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
         pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH);
+        pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH); //Likely needs to be changed
         pinpoint.resetPosAndIMU();
         try {
             launcher = new Launcher(hardwareMap, telemetry);
