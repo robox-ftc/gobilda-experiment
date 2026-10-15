@@ -133,11 +133,11 @@ public class AutoPractice extends OpMode {
             }
             case LAUNCH: {
                 if (!task.executed) {
-                    launcher.resetFeeder();
+                    //launcher.resetFeeder();
                     launcher.spinToVelocity(task.target);
                     task.executed = true;
                 } else {
-                    launcher.fire();
+                    //launcher.fire();
                 }
                 break;
             }

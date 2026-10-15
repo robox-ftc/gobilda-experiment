@@ -172,13 +172,13 @@ public class NewAuto extends OpMode {
                         int phase = launcherPhase(task, timer.milliseconds());
                         if (phase == 0) {
 //                            if (turret != null) turret.run(heading);
-                            launcher.resetFeeder();
+                            //launcher.resetFeeder();
                             launcher.spin(task.target);
                         } else if (phase <= task.target2) {
-                            launcher.fire();
+                            //launcher.fire();
                             intake.spin(1);
                         } else {
-                            launcher.abort();
+                            //launcher.abort();
                             queue.remove();
                         }
                     }
@@ -194,7 +194,7 @@ public class NewAuto extends OpMode {
                 intake.spin(0);
             }
             if (launcher != null) {
-                launcher.abort();
+                //launcher.abort();
             }
             if (turret != null) {
                 turret.resetTurret();

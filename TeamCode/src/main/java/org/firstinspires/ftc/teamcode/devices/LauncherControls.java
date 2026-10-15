@@ -2,29 +2,18 @@ package org.firstinspires.ftc.teamcode.devices;
 
 public class LauncherControls
 {
-    public double leftWheelPower;
-    public double rightWheelPower;
+    public double LauncherPower;
     public boolean bumperDown;
     public boolean leftTrigger;
     public boolean rightTrigger;
 
     public LauncherControls() {
-        this.leftWheelPower = 0.0;
-        this.rightWheelPower = 0.0;
+        this.LauncherPower = 0.0;
         this.bumperDown = false;
     }
 
     public LauncherControls(double wheelPower, boolean triggerDown) {
-        this.leftWheelPower = wheelPower;
-        this.rightWheelPower = wheelPower;
-        this.bumperDown = triggerDown;
-    }
-
-
-    public LauncherControls(double leftWheelPower, double rightWheelPower, boolean triggerDown)
-    {
-        this.leftWheelPower = leftWheelPower;
-        this.rightWheelPower = rightWheelPower;
+        this.LauncherPower = wheelPower;
         this.bumperDown = triggerDown;
     }
 
@@ -38,11 +27,9 @@ public class LauncherControls
     private static double kP = 0.012;   // ← Start here
 
     public static double[] computeShooterWheelPower(double[] rpms, double targetRPMs){
-        double errorLeft = targetRPMs - rpms[0];
-        double errorRight = targetRPMs - rpms[1];
-        double powerLeft = errorLeft * kP;
-        double powerRight = errorRight * kP;
-        return new double[]{ Math.max(0, Math.min(1.0, powerLeft)), Math.max(0, Math.min(1.0, powerRight))};
+        double errorLauncher = targetRPMs - rpms[0];
+        double powerLauncher = errorLauncher * kP;
+        return new double[]{ Math.max(0, Math.min(1.0, powerLauncher))};
     }
 
 
@@ -51,19 +38,15 @@ public class LauncherControls
 
     public static LauncherControls readControls(GamePadReadings newReadings) {
         LauncherControls controls = new LauncherControls();
-        controls.leftWheelPower = newReadings.leftTrigger;
-        controls.rightWheelPower = newReadings.leftTrigger;
+        controls.LauncherPower = newReadings.leftTrigger;
         if (newReadings.aButton) {
-            controls.leftWheelPower = 0.75;
-            controls.rightWheelPower = 0.75;
+            controls.LauncherPower = 0.75;
         }
         if (newReadings.yButton) {
-            controls.leftWheelPower = 1;
-            controls.rightWheelPower = 1;
+            controls.LauncherPower = 1;
         }
         if (newReadings.bButton) {
-            controls.leftWheelPower = -0.75;
-            controls.rightWheelPower = -0.75;
+            controls.LauncherPower = -0.75;
         }
         controls.bumperDown = newReadings.leftBumper || newReadings.rightBumper;
         controls.leftTrigger =  newReadings.leftBumper;
@@ -71,9 +54,8 @@ public class LauncherControls
 
         // Feeding a ball into stopped wheels just jams it, so a bare fire press
         // spins the wheels up too. B (eject) keeps its negative power.
-        if (controls.bumperDown && controls.leftWheelPower == 0) {
-            controls.leftWheelPower = DEFAULT_LAUNCH_POWER;
-            controls.rightWheelPower = DEFAULT_LAUNCH_POWER;
+        if (controls.bumperDown && controls.LauncherPower == 0) {
+            controls.LauncherPower = DEFAULT_LAUNCH_POWER;
         }
         return controls;
     }
