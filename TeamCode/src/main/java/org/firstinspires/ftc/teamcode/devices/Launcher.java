@@ -38,7 +38,6 @@ public class Launcher {
     public Launcher(HardwareMap hardwareMap, Telemetry telemetry) {
         this.telemetry = telemetry;
         initShooter(hardwareMap);
-        initFeeder(hardwareMap);
     }
 
     public void initShooter(HardwareMap hardwareMap) {
@@ -59,18 +58,6 @@ public class Launcher {
     {
         manualLaunch(controls);
     }
-
-    public void initFeeder(HardwareMap hardwareMap) {
-        /*
-         * Set Feeders to an initial value to initialize the servo controller
-         */
-        feeder = hardwareMap.get(CRServo.class, "feeder");
-        // The following setting depends on your hardware mountings.
-        feeder.resetDeviceConfigurationForOpMode();
-        feeder.setPower(0);
-        timer = new ElapsedTime();
-    }
-
     public void spin(double power) {
         launcherLeft.setPower(power);
         launcherRight.setPower(power);
@@ -110,13 +97,8 @@ public class Launcher {
         telemetry.addData("RPM-left", this.getLeftWheelRPM());
         telemetry.addData("RPM-right", this.getRightWheelRPM());
 
-        launcherLeft.setPower(controls.leftWheelPower);
-        launcherRight.setPower(controls.rightWheelPower);
-
-        if (controls.triggerDown)
-            fire();
-        else
-            resetFeeder();
+        launcherLeft.setPower(controls.wheelPower);
+        launcherRight.setPower(controls.wheelPower);
     }
 
     public void abort() {

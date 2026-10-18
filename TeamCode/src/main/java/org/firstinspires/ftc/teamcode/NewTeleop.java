@@ -15,7 +15,7 @@ public class NewTeleop extends OpMode {
     private Drivetrain drivetrain;
     private Intake intake;
     private Ramp ramp;
-    private GoBildaPinpointDriver pinpoint;
+//    private GoBildaPinpointDriver pinpoint;
     private final double TOLERANCE = 0.1;
     /*
      * Code to run ONCE when the driver hits INIT
@@ -28,10 +28,10 @@ public class NewTeleop extends OpMode {
         intake = new Intake(hardwareMap, telemetry);
         ramp = new Ramp(hardwareMap, telemetry);
         telemetry.addData("Status: ", "Motors Initialized");
-        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
-        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD); // Not necessarily correct
-        pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH);
-        pinpoint.resetPosAndIMU();
+//        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+//        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD); // Not necessarily correct
+//        pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH);
+//        pinpoint.resetPosAndIMU();
         telemetry.addData("Status: ", "Odo Initialized");
         telemetry.addLine("Camera initialized. Waiting for start...");
         telemetry.update();
@@ -67,8 +67,8 @@ public class NewTeleop extends OpMode {
         // Sensing
         // This is the global readings.
         gamePadReading.update(gamepad1, gamepad2);
-        pinpoint.update();
-        double heading = pinpoint.getHeading(AngleUnit.DEGREES);
+//        double heading = pinpoint.getHeading(AngleUnit.DEGREES);
+//        pinpoint.update();
 
         DrivetrainControls driveControls = DrivetrainControls.readControls(gamePadReading);
         LauncherControls launcherControls = LauncherControls.readControls(gamePadReading);
@@ -78,9 +78,9 @@ public class NewTeleop extends OpMode {
         ramp.run(launcherControls);
 
         drivetrain.run(driveControls);
-        telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));
-        telemetry.addData("Y", pinpoint.getPosY(DistanceUnit.INCH));
-        telemetry.addData("Heading", heading);
+//        telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));
+//        telemetry.addData("Y", pinpoint.getPosY(DistanceUnit.INCH));
+//        telemetry.addData("Heading", heading);
         telemetry.update();
     }
 }

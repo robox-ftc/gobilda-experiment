@@ -21,7 +21,6 @@ public class AutoPractice extends OpMode {
     private Drivetrain drivetrain;
     private Intake intake;
     private Launcher launcher;
-    private Turret turret;
     private DrivetrainControls controls;
     private int color;
     private boolean near;
@@ -32,7 +31,6 @@ public class AutoPractice extends OpMode {
     public void init() {
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         controls = new DrivetrainControls();
-        turret = new Turret(hardwareMap, telemetry);
         telemetry.addLine("Drivetrain initialized");
         try {
             launcher = new Launcher(hardwareMap, telemetry);
