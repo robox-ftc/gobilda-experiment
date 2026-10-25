@@ -11,6 +11,7 @@ import org.firstinspires.ftc.teamcode.devices.Drivetrain;
 import org.firstinspires.ftc.teamcode.devices.DrivetrainControls;
 import org.firstinspires.ftc.teamcode.devices.Intake;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
+import org.firstinspires.ftc.teamcode.devices.Ramp;
 import org.firstinspires.ftc.teamcode.devices.Task;
 
 import java.util.*;
@@ -36,6 +37,7 @@ public class NewAuto extends OpMode {
     private GoBildaPinpointDriver pinpoint;
     private Drivetrain drivetrain;
     private Intake intake;
+    private Ramp ramp;
     private Launcher launcher;
     private DrivetrainControls controls;
     private Queue<Task> queue;
@@ -54,10 +56,12 @@ public class NewAuto extends OpMode {
             launcher = new Launcher(hardwareMap, telemetry);
             telemetry.addLine("Launcher initialized");
             intake = new Intake(hardwareMap, telemetry);
+            ramp = new Ramp(hardwareMap, telemetry);
             telemetry.addLine("Intake initialized");
         } catch (Exception e) {
             launcher = null;
             intake = null;
+            ramp = null;
             telemetry.addLine("Drivetrain-only started");
         }
         mode = Mode.PARK;
@@ -181,12 +185,11 @@ public class NewAuto extends OpMode {
                     if (intake != null && launcher != null) {
                         int phase = launcherPhase(task, timer.milliseconds());
                         if (phase == 0) {
-//                            if (turret != null) turret.run(heading);
                             launcher.resetFeeder();
                             launcher.spin(task.target);
                         } else if (phase <= task.target2) {
-                            launcher.fire();
-                            intake.spin(1);
+                            launcher.spin(task.target);
+                            ramp.spin(1);
                         } else {
                             launcher.abort();
                             queue.remove();

@@ -22,7 +22,7 @@ public class Ramp {
     }
 
     public void spin(double targetPower) {
-        wheel.setPower(targetPower);
+        wheel.setPower(-targetPower);
     }
 
 

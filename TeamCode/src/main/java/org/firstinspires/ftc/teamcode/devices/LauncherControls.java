@@ -29,6 +29,9 @@ public class LauncherControls {
             controls.wheelPower = -0.75;
         }
         controls.rampPower = newReadings.bButton ? -1 : ((newReadings.leftBumper || newReadings.rightBumper) ? 1 : 0);
+        if (newReadings.aButton) {
+            controls.rampPower = -controls.rampPower;
+        }
         return controls;
     }
 }
