@@ -4,7 +4,8 @@ public class Task {
     public enum Type {
         TRANSLATE,
         ROTATE,
-        LAUNCH
+        LAUNCH,
+        INTAKE
     }
     public int begin;
     public int end;

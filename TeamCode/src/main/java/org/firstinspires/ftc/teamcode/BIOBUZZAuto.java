@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+//import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -11,11 +11,12 @@ import org.firstinspires.ftc.teamcode.devices.Drivetrain;
 import org.firstinspires.ftc.teamcode.devices.DrivetrainControls;
 import org.firstinspires.ftc.teamcode.devices.Intake;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
+import org.firstinspires.ftc.teamcode.devices.Ramp;
 import org.firstinspires.ftc.teamcode.devices.Task;
 import org.firstinspires.ftc.teamcode.devices.Turret;
 
 import java.util.*;
-@Autonomous(name = "BIOBUZZAuto", group = "Robot")
+@Autonomous(name = "HiveKnightAuto", group = "Robot")
 public class BIOBUZZAuto extends OpMode {
     private static final double TOLERANCE = 1; // Arbitrary
     private static final double RTOLERANCE = 5; // Arbitrary
@@ -26,17 +27,22 @@ public class BIOBUZZAuto extends OpMode {
     private final double R = 2 * 12.0 / 360.0;
     private boolean launcherStarted;
 
-    private GoBildaPinpointDriver pinpoint;
+//    private GoBildaPinpointDriver pinpoint;
     private Drivetrain drivetrain;
     private Intake intake;
     private Launcher launcher;
+    private Ramp ramp;
     private Turret turret;
     private DrivetrainControls controls;
     private boolean HiveSide;
     private boolean SideSelected;
+    private boolean OdometrySelected;
+    private boolean TaskStarted;
+//    private boolean PinpointUsed;
     private Queue<Task> queue;
     private ElapsedTime timer;
     ElapsedTime launcherTimer = new ElapsedTime();
+    ElapsedTime SpinUpTimer = new ElapsedTime();
     private enum AutoMode{
         Leave,
         Park,
@@ -49,10 +55,10 @@ public class BIOBUZZAuto extends OpMode {
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         controls = new DrivetrainControls();
         telemetry.addLine("Drivetrain initialized");
-        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
-        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH); //Likely needs to be changed
-        pinpoint.resetPosAndIMU();
+//        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+//        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+//        pinpoint.setOffsets(0, 7.5, DistanceUnit.INCH); //Likely needs to be changed
+//        pinpoint.resetPosAndIMU();
         try {
             launcher = new Launcher(hardwareMap, telemetry);
             telemetry.addLine("Launcher initialized");
@@ -65,7 +71,9 @@ public class BIOBUZZAuto extends OpMode {
         }
         HiveSide = true;
         SideSelected = false;
+        OdometrySelected = false;
         launcherStarted = false;
+        TaskStarted = false;
         queue = new LinkedList<>();
         timer = new ElapsedTime();
         telemetry.update();
@@ -102,133 +110,161 @@ public class BIOBUZZAuto extends OpMode {
                 telemetry.addLine("LaunchAndPark is Selected");
                 autoMode = AutoMode.LaunchAndPark;
             }
+            if (gamepad1.rightBumperWasPressed() || gamepad2.rightBumperWasPressed()) {
+                SideSelected = false;
+            }
         }
+//        if (SideSelected && !OdometrySelected) {
+//            if (gamepad1.leftBumperWasPressed() || gamepad2.leftBumperWasPressed()) {
+//                telemetry.addLine("Pinpoint is enabled");
+//                OdometrySelected = true;
+//                PinpointUsed = true;
+//            }
+//            if (gamepad1.rightBumperWasPressed() || gamepad2.rightBumperWasPressed()) {
+//                telemetry.addLine("Pinpoint is disabled");
+//                OdometrySelected = true;
+//                PinpointUsed = false;
+//            }
+//        }
         telemetry.update();
     }
     @Override
     public void start() {
-        switch (autoMode) { //All values are placeholders as we do not know the correct ones
+        if (!SideSelected){
+            autoMode = AutoMode.Leave;
+        }
+
+        switch (autoMode) {
             case Leave:
-                if (HiveSide) {
-                    queue.add(new Task(0, 5000, Task.Type.TRANSLATE, 0, 10));
-                } else {
-                    // Leave, non-Hive side
-                }
+                    queue.add(new Task(0, 500, Task.Type.TRANSLATE, 0, 0.5)); //Time and power settings
                 break;
 
             case Park:
                 if (HiveSide) {
-                    queue.add(new Task(0, 5000, Task.Type.TRANSLATE, 0, 10));
-                    queue.add(new Task(0, 5000, Task.Type.TRANSLATE, 20, 0));
+                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0.28, 0.5));
                 } else {
-                    // Park, non-Hive side
+                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0.5, 0.28));
                 }
                 break;
 
             case Launch:
                 if (HiveSide) {
-                    queue.add(new Task(0, 5000, Task.Type.TRANSLATE, 0, 10));
-                    queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0, 10));
+                    queue.add(new Task(0, 10000, Task.Type.LAUNCH, 0, 5));
                 } else {
-                    // Launch, non-Hive side
+                    queue.add(new Task(0, 1500, Task.Type.TRANSLATE, 0, 1));
+                    queue.add(new Task(0, 1000, Task.Type.ROTATE, -90, 0));
+                    queue.add(new Task(0, 10000, Task.Type.LAUNCH, 0, 5));
                 }
                 break;
 
             case LaunchAndPark:
                 if (HiveSide) {
-                    // LaunchAndPark, Hive side
+                    queue.add(new Task(0, 7000, Task.Type.LAUNCH, 0, 3)); //Power and spin-up time
+                    queue.add(new Task(0, 3000, Task.Type.TRANSLATE, 0.9, 0.75));
                 } else {
-                    // LaunchAndPark, non-Hive side
+                    queue.add(new Task(0, 1500, Task.Type.TRANSLATE, 0, 1));
+                    queue.add(new Task(0, 1000, Task.Type.ROTATE, -0.75, 0)); //Motor power
+                    queue.add(new Task(0, 10000, Task.Type.LAUNCH, 0, 5));
+                    queue.add(new Task(0, 4000, Task.Type.TRANSLATE, 0.9, 0.75));
                 }
                 break;
-        }
 
+        }
         timer.reset();
     }
-        @Override
-        public void loop() {
-            controls.translationXPower = 0;
-            controls.translationYPower = 0;
-            controls.rotationPower = 0;
+    @Override
+    public void loop() {
+        controls.translationXPower = 0;
+        controls.translationYPower = 0;
+        controls.rotationPower = 0;
+//if (PinpointUsed) {
+//        pinpoint.update();
+//        double x = pinpoint.getPosX(DistanceUnit.INCH);
+//        double y = pinpoint.getPosY(DistanceUnit.INCH);
+//        double heading = pinpoint.getHeading(AngleUnit.DEGREES);
+//}
+        if (!queue.isEmpty()) {
+            Task task = queue.peek();
+            if (!TaskStarted) {
+                timer.reset();
+                TaskStarted = true;
+            }
+            switch (task.type) {
+                case TRANSLATE:
+                    double x = task.target;
+                    double y = task.target2;
+                    if (timer.milliseconds() > task.end) {
+                        controls.translationXPower = 0;
+                        controls.translationYPower = 0;
+                        intake.spin(1);
+                        queue.remove();
+                        TaskStarted = false;
+                    } else {
+                        controls.translationXPower = pClamp(x);
+                        controls.translationYPower = pClamp(y);
+                    }
+                    break;
 
-            pinpoint.update();
-            double x = pinpoint.getPosX(DistanceUnit.INCH);
-            double y = pinpoint.getPosY(DistanceUnit.INCH);
-            double heading = pinpoint.getHeading(AngleUnit.DEGREES);
-
-            if (!queue.isEmpty()) {
-                Task task = queue.peek();
-
-                switch (task.type) {
-                    case TRANSLATE:
-                        double errorX = task.target - x;
-                        double errorY = task.target2 - y;
-                        // square distance, unlikely it'll reach the end of the task
-                        if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
-                            queue.remove();
-                        } else {
-                            controls.translationXPower = pClamp(errorX);
-                            controls.translationYPower = pClamp(errorY);
-                        }
-                        if (intake != null) {
-                            intake.spin(1);
-                        }
-                        break;
                     case ROTATE:
-                        double error = task.target - heading;
+                        double error = task.target;
                         if (error > 180) error -= 360;
                         if (error < -180) error += 360;
-                        // Try to avoid the robot turning more than 360
-                        if (Math.abs(error) <= RTOLERANCE || timer.milliseconds() > task.end) {
+                        if (timer.milliseconds() > task.end) {
+                            controls.rotationPower = 0;
                             queue.remove();
+                            TaskStarted = false;
                         } else {
                             controls.rotationPower = pClamp(error * R);
                         }
-                        if (intake != null) {
-                            intake.spin(0);
-                        }
                         break;
-                    case LAUNCH:
-                        if (intake != null && launcher != null && !launcherStarted) {
-                            launcherTimer.reset();
-                            launcherStarted = true;
-                        }
-                        if (launcherStarted && launcherTimer.seconds() < task.target2) {
+
+                case LAUNCH:
+                    if (intake != null && launcher != null && !launcherStarted) {
+                        launcherTimer.reset();
+                        SpinUpTimer.reset();
+                        launcherStarted = true;
+                        TaskStarted = false;
+
+                        if (SpinUpTimer.seconds() < task.target2) {
                             launcher.spin(task.target);
                         }
-                        else {
-                            assert launcher != null;
-                            launcher.stopSpin();
-                            queue.remove();
-                            launcherStarted = false;
+                        else if (launcherTimer.seconds() < task.end) {
+                            launcher.spin(task.target);
+                            ramp.spin(1);
                         }
-                        break;
+                    }
+                    else {
+                        queue.remove();
+                        TaskStarted = false;
+                        launcherStarted = false;
+                    }
+                    break;
 
-                    default:
-                        controls.translationXPower = 0;
-                        controls.translationYPower = 0;
-                        controls.rotationPower = 0;
-                        break;
-                }
-            } else {
-                if (intake != null) {
-                    intake.spin(0);
-                }
-                if (turret != null) {
-                    turret.resetTurret();
-                }
+                default:
+                    controls.translationXPower = 0;
+                    controls.translationYPower = 0;
+                    controls.rotationPower = 0;
+                    queue.remove();
+                    break;
             }
-            if (drivetrain != null) drivetrain.run(controls);
-
-            telemetry.addData("Current X", x);
-            telemetry.addData("Current Y", y);
-            telemetry.addData("Current Heading", heading);
-            telemetry.addData("Remaining Tasks", queue.size());
-            telemetry.update();
+        } else {
+            if (intake != null) {
+                intake.spin(0);
+            }
+            if (turret != null) {
+                turret.resetTurret();
+            }
         }
-
-
-        private double pClamp(double error) {
-            return Math.min(Math.max(error * P, -1), 1);
-        }
+        if (drivetrain != null) drivetrain.run(controls);
+//if (PinpointUsed) {
+    //telemetry.addData("Current X", x);
+    //telemetry.addData("Current Y", y);
+    //telemetry.addData("Current Heading", heading);
+    //telemetry.addData("Remaining Tasks", queue.size());
+//}
+        telemetry.update();
     }
+    private double pClamp(double error) {
+        return Math.min(Math.max(error, -1), 1);
+    }
+}

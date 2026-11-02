@@ -73,5 +73,6 @@ public class GamePadReadings {
         yWasReleased = gamepad1.yWasReleased() || gamepad2.yWasReleased();
         yWasPressed = gamepad1.yWasPressed() || gamepad2.yWasPressed();
         backWasPressed = gamepad1.backWasPressed() || gamepad2.backWasPressed();
+
     }
 }
