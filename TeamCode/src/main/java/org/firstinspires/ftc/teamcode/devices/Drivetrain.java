@@ -27,10 +27,10 @@ public class Drivetrain {
     }
 
     public void init(HardwareMap hardwareMap, boolean auto) {
-        frontLeftDrive = hardwareMap.get(DcMotorEx.class, "lfdrive");
-        frontRightDrive = hardwareMap.get(DcMotorEx.class, "rfdrive");
-        rearLeftDrive = hardwareMap.get(DcMotorEx.class, "lbdrive");
-        rearRightDrive = hardwareMap.get(DcMotorEx.class, "rbdrive");
+        frontLeftDrive = hardwareMap.get(DcMotorEx.class, "lf");
+        frontRightDrive = hardwareMap.get(DcMotorEx.class, "rf");
+        rearLeftDrive = hardwareMap.get(DcMotorEx.class, "lb");
+        rearRightDrive = hardwareMap.get(DcMotorEx.class, "rb");
         driveMotors[0] = frontLeftDrive;
         driveMotors[1] = frontRightDrive;
         driveMotors[2] = rearRightDrive;
