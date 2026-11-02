@@ -17,7 +17,7 @@ import org.firstinspires.ftc.teamcode.devices.Task;
 import java.util.LinkedList;
 import java.util.Queue;
 
-@Autonomous(name = "Auto-2027", group = "Robot")
+@Autonomous(name = "Auto-2027NoOdo", group = "Robot")
 public class Auto extends OpMode {
 
     public enum Mode {
@@ -106,16 +106,29 @@ public class Auto extends OpMode {
     public void start() {
         switch (mode) {
             case LEAVE:
-                queue.add(new Task(0, 500, Task.Type.TRANSLATE, 0, 1));
+                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 0.5));
+                break;
             case PARK:
-                queue.add(new Task(0, 500, Task.Type.TRANSLATE, 0, 1));
-                queue.add(new Task(1500, 2000, Task.Type.TRANSLATE, -5, 1));
+                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 0.5));
+                queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -0.35));
+                break;
             case SHOOT:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
-                queue.add(new Task(5500, 6000, Task.Type.TRANSLATE, -1, 1));
-                queue.add(new Task(6000, 7000, Task.Type.TRANSLATE, -1, 5));
+                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.8, 2));
+                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -1, 0.75));
+                queue.add(new Task(7000, 8500, Task.Type.TRANSLATE, 0, 1));
+                break;
             case INTAKE:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
+                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.8, 2));
+                queue.add(new Task(5500, 6000, Task.Type.ROTATE, 0.1, 0));
+                queue.add(new Task(5500, 7000, Task.Type.TRANSLATE, -0.75, -0.2));
+                queue.add(new Task(7500, 8000, Task.Type.ROTATE, -0.1, 0));
+                queue.add(new Task(8500, 9000, Task.Type.TRANSLATE, 0.75, 0.2));
+                queue.add(new Task(9250, 9750, Task.Type.TRANSLATE, 0, -0.3));
+                queue.add(new Task(10000, 15000, Task.Type.LAUNCH, 0.8, 2));
+                queue.add(new Task(15500, 16500, Task.Type.TRANSLATE, -1, 0.75));
+                queue.add(new Task(17000, 18500, Task.Type.TRANSLATE, 0, 1));
+                break;
+
         }
 //        if (stay) {
 //            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
@@ -171,7 +184,6 @@ public class Auto extends OpMode {
                     if (intake != null && launcher != null) {
                         int phase = launcherPhase(task, timer.milliseconds());
                         if (phase == 0) {
-                            launcher.resetFeeder();
                             launcher.spin(task.target);
                         } else if (phase <= task.target2) {
                             launcher.spin(task.target);

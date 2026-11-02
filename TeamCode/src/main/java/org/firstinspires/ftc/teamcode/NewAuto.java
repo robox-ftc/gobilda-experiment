@@ -5,18 +5,24 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.devices.Drivetrain;
 import org.firstinspires.ftc.teamcode.devices.DrivetrainControls;
 import org.firstinspires.ftc.teamcode.devices.Intake;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
 import org.firstinspires.ftc.teamcode.devices.Ramp;
 import org.firstinspires.ftc.teamcode.devices.Task;
+import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.*;
 
-@Autonomous(name = "Auto-2026Decode", group = "Robot")
+@Autonomous(name = "Auto-2027", group = "Robot")
 public class NewAuto extends OpMode {
 
     public enum Mode {
@@ -26,15 +32,19 @@ public class NewAuto extends OpMode {
         INTAKE
     }
     private static final double TOLERANCE = 1; // Arbitrary
+    private static final int THRESHOLD = 10000; // Milliseconds before it checks the camera
     private static final double RTOLERANCE = 5; // Arbitrary
 
     // Tunable P
     private final double P = 1.0 / 20.0;
     // Rotation Factor
     private final double R = 2 * 12.0 / 360.0;
+    private boolean color = true; // default blue
 
     private Mode mode;
     private GoBildaPinpointDriver pinpoint;
+    private VisionPortal visionPortal;
+    private AprilTagProcessor aprilTag;
     private Drivetrain drivetrain;
     private Intake intake;
     private Ramp ramp;
@@ -42,9 +52,17 @@ public class NewAuto extends OpMode {
     private DrivetrainControls controls;
     private Queue<Task> queue;
     private ElapsedTime timer;
+    private final Set<Integer> redID = new HashSet<>();
+    private final Set<Integer> blueID = new HashSet<>();
 
     @Override
     public void init() {
+        for (int i = 34; i < 38; i++) {
+            redID.add(i);
+        }
+        for (int i = 42; i < 46; i++) {
+            blueID.add(i);
+        }
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         controls = new DrivetrainControls();
         telemetry.addLine("Drivetrain initialized");
@@ -64,6 +82,25 @@ public class NewAuto extends OpMode {
             ramp = null;
             telemetry.addLine("Drivetrain-only started");
         }
+        try {
+            // Pasted
+            long time = System.nanoTime();
+            aprilTag = new AprilTagProcessor.Builder()
+                    .setDrawAxes(true)
+                    .setDrawCubeProjection(true)
+                    .setDrawTagOutline(true)
+                    .setCameraPose(
+                            new Position(DistanceUnit.INCH, 6, 7, 14, time),
+                            new YawPitchRollAngles(AngleUnit.DEGREES, 0, 15, 0, time))
+                    .build();
+            visionPortal = new VisionPortal.Builder()
+                    .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+                    .addProcessor(aprilTag)
+                    .build();
+        } catch (Exception e) {
+            telemetry.addData("Error: ", e.toString());
+            telemetry.addLine("Camera failed to initialize");
+        }
         mode = Mode.PARK;
         queue = new LinkedList<>();
         timer = new ElapsedTime();
@@ -73,9 +110,11 @@ public class NewAuto extends OpMode {
     @Override
     public void init_loop() {
         if (gamepad1.xWasPressed() || gamepad2.xWasPressed()) {
+            color = true;
             telemetry.addLine("Team BLUE is selected");
         }
         if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) {
+            color = false;
             telemetry.addLine("Team RED is selected");
         }
         if (gamepad1.yWasPressed() || gamepad2.yWasPressed()) {
@@ -110,31 +149,29 @@ public class NewAuto extends OpMode {
     public void start() {
         switch (mode) {
             case LEAVE:
-                queue.add(new Task(0, 500, Task.Type.TRANSLATE, 0, 1));
+                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 0.5));
+                break;
             case PARK:
-                queue.add(new Task(0, 500, Task.Type.TRANSLATE, 0, 1));
-                queue.add(new Task(1500, 2000, Task.Type.TRANSLATE, -5, 1));
+                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 0.5));
+                queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -0.35));
+                break;
             case SHOOT:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
-                queue.add(new Task(5500, 6000, Task.Type.TRANSLATE, -1, 1));
-                queue.add(new Task(6000, 7000, Task.Type.TRANSLATE, -1, 5));
+                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.8, 2));
+                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -1, 0.75));
+                queue.add(new Task(7000, 8500, Task.Type.TRANSLATE, 0, 1));
+                break;
             case INTAKE:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
+                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.8, 2));
+                queue.add(new Task(5500, 6000, Task.Type.ROTATE, 0.1, 0));
+                queue.add(new Task(5500, 7000, Task.Type.TRANSLATE, -0.75, -0.2));
+                queue.add(new Task(7500, 8000, Task.Type.ROTATE, -0.1, 0));
+                queue.add(new Task(8500, 9000, Task.Type.TRANSLATE, 0.75, 0.2));
+                queue.add(new Task(9250, 9750, Task.Type.TRANSLATE, 0, -0.3));
+                queue.add(new Task(10000, 15000, Task.Type.LAUNCH, 0.8, 2));
+                queue.add(new Task(15500, 16500, Task.Type.TRANSLATE, -1, 0.75));
+                queue.add(new Task(17000, 18500, Task.Type.TRANSLATE, 0, 1));
+                break;
         }
-//        if (stay) {
-//            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
-//        } else if (near) {
-//            // no ROTATE immediately before LAUNCH
-//            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
-//            queue.add(new Task(5000, 5500, Task.Type.TRANSLATE, 0, -12));
-//            queue.add(new Task(10000, 10500, Task.Type.TRANSLATE, -12, -24));
-//            queue.add(new Task(12000, 12500, Task.Type.TRANSLATE, -15, -28));
-//            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -14, -26));
-//        } else {
-//            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 1, 3));
-//            queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, -12, 6));
-//            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -18, 12));
-//        }
         timer.reset();
     }
 
@@ -154,8 +191,8 @@ public class NewAuto extends OpMode {
 
             switch (task.type) {
                 case TRANSLATE:
-                    double errorX = task.target - x;
-                    double errorY = task.target2 - y;
+                    double errorY = task.target - x;
+                    double errorX = task.target2 - y;
                     // square distance, unlikely it'll reach the end of the task
                     if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
                         queue.remove();
@@ -182,13 +219,31 @@ public class NewAuto extends OpMode {
                     }
                     break;
                 case LAUNCH:
+                    if (timer.milliseconds() > THRESHOLD && aprilTag != null) {
+                        AprilTagDetection target = null;
+                        try {
+                            ArrayList<AprilTagDetection> currentDetections = aprilTag.getDetections();
+                            for (AprilTagDetection detection : currentDetections) {
+                                if (detection.metadata == null) {
+                                    continue;
+                                }
+                                if ((redID.contains(detection.metadata.id) && !color) || (blueID.contains(detection.metadata.id) && color)) {
+                                    target = detection;
+                                    break;
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                        if (target == null) {
+                            break;
+                        }
+                    }
                     if (intake != null && launcher != null) {
                         int phase = launcherPhase(task, timer.milliseconds());
                         if (phase == 0) {
-                            launcher.resetFeeder();
-                            launcher.spin(task.target);
+                            launcher.spinToFraction(task.target);
+                            ramp.spin(0);
                         } else if (phase <= task.target2) {
-                            launcher.spin(task.target);
+                            launcher.spinToFraction(task.target);
                             ramp.spin(1);
                         } else {
                             launcher.abort();

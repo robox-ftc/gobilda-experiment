@@ -26,11 +26,15 @@ public class LauncherControls {
         LauncherControls controls = new LauncherControls();
         controls.wheelPower = newReadings.leftTrigger;
         if (newReadings.bButton) {
-            controls.wheelPower = -0.75;
+            controls.wheelPower = -0.8;
         }
-        controls.rampPower = newReadings.bButton ? -1 : ((newReadings.leftBumper || newReadings.rightBumper) ? 1 : 0);
+        controls.rampPower = newReadings.bButton ? -1 : 1;
+        if (!(newReadings.rightBumper || newReadings.bButton)) {
+            controls.wheelPower = controls.wheelPower * 0.85;
+            controls.rampPower = 0;
+        }
         if (newReadings.aButton) {
-            controls.rampPower = -controls.rampPower;
+            controls.rampPower = -0.5;
         }
         return controls;
     }
