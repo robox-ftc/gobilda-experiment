@@ -12,6 +12,17 @@ apply plugin: 'com.android.application'
 
 // Custom definitions may go here
 
+// Native libraries for the desktop gamepad harness. Test-only: none of this is
+// packaged into the robot APK.
+ext.lwjglVersion = '3.3.6'
+ext.lwjglNatives = {
+    String os = System.getProperty('os.name').toLowerCase()
+    if (os.contains('win')) return 'natives-windows'
+    if (os.contains('mac')) return System.getProperty('os.arch').startsWith('aarch64') ?
+            'natives-macos-arm64' : 'natives-macos'
+    return 'natives-linux'
+}()
+
 // Include common definitions from above.
 apply from: '../build.common.gradle'
 apply from: '../build.dependencies.gradle'
@@ -25,6 +36,20 @@ android {
         }
         jniLibs.useLegacyPackaging true
     }
+
+    testOptions {
+        unitTests {
+            // The unit tests run on the desktop JVM, where there is no Android
+            // runtime. Without this, any android.* method reached from SDK code
+            // throws "not mocked" instead of returning a default.
+            returnDefaultValues = true
+            all {
+                testLogging {
+                    events "passed", "skipped", "failed"
+                }
+            }
+        }
+    }
 }
 
 repositories {
@@ -37,4 +62,58 @@ dependencies {
     implementation project(':FtcRobotController')
 
     implementation 'com.acmerobotics.dashboard:dashboard:0.4.16'
+
+    // Desktop JVM tests. These never touch the robot: run them with
+    // `gradlew :TeamCode:testDebugUnitTest`, or from the gutter in Android Studio.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.20.0'
+
+    // Reads a real gamepad plugged into the PC, for the interactive harness
+    // (`gradlew :TeamCode:gamepadHarness`). GLFW is used rather than JInput
+    // because JInput's Windows backend merges the two triggers of an Xbox pad
+    // onto one axis, and this robot uses both triggers independently.
+    testImplementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
+    testImplementation "org.lwjgl:lwjgl"
+    testImplementation "org.lwjgl:lwjgl-glfw"
+    testRuntimeOnly "org.lwjgl:lwjgl::$lwjglNatives"
+    testRuntimeOnly "org.lwjgl:lwjgl-glfw::$lwjglNatives"
+}
+
+/**
+ * Drives the real device classes from a real gamepad, on the desktop, with
+ * recording stand-ins where the motors would be. See src/test/README.md.
+ */
+tasks.register('gamepadHarness', JavaExec) {
+    group = 'verification'
+    description = 'Drive the robot code from a gamepad plugged into this PC.'
+    dependsOn 'compileDebugUnitTestJavaWithJavac'
+    mainClass = 'org.firstinspires.ftc.teamcode.testing.GamepadHarness'
+    classpath = files({ tasks.named('testDebugUnitTest').get().classpath })
+    standardInput = System.in
+}
+
+/*
+ * The desktop field view uses Swing. An Android module compiles against
+ * android.jar, which has no java.awt at all, but unit tests run on a real
+ * desktop JVM - so clear the bootstrap classpath for the unit-test compile and
+ * let it see the JDK it is actually going to run on. src/main is untouched.
+ */
+tasks.withType(JavaCompile).configureEach {
+    if (name.toLowerCase().contains('unittest')) {
+        // AGP points the bootstrap classpath at android.jar, and it wins over
+        // anything set at configuration time, so clear it as the task starts.
+        doFirst { options.bootstrapClasspath = null }
+    }
+}
+
+// The same harness with a window instead of a console dashboard. Swing ships
+// with the JDK, so this adds no dependency on top of the GLFW one above.
+tasks.register('gamepadGui', JavaExec) {
+    group = 'verification'
+    description = 'Drive the robot code from a gamepad, drawn on a field view.'
+    dependsOn 'compileDebugUnitTestJavaWithJavac'
+    mainClass = 'org.firstinspires.ftc.teamcode.testing.GamepadHarness'
+    classpath = files({ tasks.named('testDebugUnitTest').get().classpath })
+    args '--gui'
+    standardInput = System.in
 }
