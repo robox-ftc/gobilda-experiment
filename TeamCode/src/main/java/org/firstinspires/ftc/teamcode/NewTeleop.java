@@ -8,13 +8,14 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.devices.*;
 
-@TeleOp(name = "Teleop-2026Decode", group = "StarterBot")
+@TeleOp(name = "Teleop-2027", group = "StarterBot")
 public class NewTeleop extends OpMode {
     private GamePadReadings gamePadReading;
     private Launcher launcher;
     private Drivetrain drivetrain;
     private Intake intake;
     private Ramp ramp;
+    private int step;
 //    private GoBildaPinpointDriver pinpoint;
     private final double TOLERANCE = 0.1;
     /*
@@ -74,8 +75,13 @@ public class NewTeleop extends OpMode {
         LauncherControls launcherControls = LauncherControls.readControls(gamePadReading);
         double intakePower = gamePadReading.bButton ? -0.5 : gamePadReading.rightTrigger;
         intake.run(intakePower);
-        launcher.run(launcherControls);
-        ramp.run(launcherControls);
+        if (gamePadReading.leftBumper) {
+            launcher.run(launcherControls);
+            ramp.run(launcherControls);
+        } else {
+            launcher.run(launcherControls);
+            ramp.run(launcherControls);
+        }
 
         drivetrain.run(driveControls);
 //        telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));
