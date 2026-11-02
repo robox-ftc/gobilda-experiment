@@ -23,7 +23,7 @@ public class Intake {
     }
 
     public void spin(double targetPower) {
-        wheel.setPower(targetPower);
+        wheel.setPower(-targetPower);
     }
 
 
