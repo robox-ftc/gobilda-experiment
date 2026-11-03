@@ -16,6 +16,7 @@ import org.firstinspires.ftc.teamcode.devices.Intake;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
 import org.firstinspires.ftc.teamcode.devices.Ramp;
 import org.firstinspires.ftc.teamcode.devices.Task;
+import org.firstinspires.ftc.teamcode.utils.CellTags;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -52,17 +53,9 @@ public class NewAuto extends OpMode {
     private DrivetrainControls controls;
     private Queue<Task> queue;
     private ElapsedTime timer;
-    private final Set<Integer> redID = new HashSet<>();
-    private final Set<Integer> blueID = new HashSet<>();
 
     @Override
     public void init() {
-        for (int i = 34; i < 38; i++) {
-            redID.add(i);
-        }
-        for (int i = 42; i < 46; i++) {
-            blueID.add(i);
-        }
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         controls = new DrivetrainControls();
         telemetry.addLine("Drivetrain initialized");
@@ -224,10 +217,8 @@ public class NewAuto extends OpMode {
                         try {
                             ArrayList<AprilTagDetection> currentDetections = aprilTag.getDetections();
                             for (AprilTagDetection detection : currentDetections) {
-                                if (detection.metadata == null) {
-                                    continue;
-                                }
-                                if ((redID.contains(detection.metadata.id) && !color) || (blueID.contains(detection.metadata.id) && color)) {
+                                // Either of our alliance's CELLs, as a cluster or a single tag.
+                                if (CellTags.isOurs(detection, color)) {
                                     target = detection;
                                     break;
                                 }

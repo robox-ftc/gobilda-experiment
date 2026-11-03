@@ -16,6 +16,7 @@ import org.firstinspires.ftc.teamcode.devices.Intake;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
 import org.firstinspires.ftc.teamcode.devices.LauncherControls;
 import org.firstinspires.ftc.teamcode.devices.Ramp;
+import org.firstinspires.ftc.teamcode.utils.CellTags;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -24,8 +25,6 @@ import java.util.*;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "Teleop-2027-Intel", group = "StarterBot")
 public class TeleOp extends OpMode {
-    private final Set<Integer> redID = new HashSet<>();
-    private final Set<Integer> blueID = new HashSet<>();
     private GamePadReadings gamePadReading;
     private Launcher launcher;
     private Drivetrain drivetrain;
@@ -42,10 +41,6 @@ public class TeleOp extends OpMode {
      */
     @Override
     public void init() {
-        for (int i = 0; i < 8; i++) {
-            redID.add(i + 30);
-            blueID.add(i + 38);
-        }
         gamePadReading = new GamePadReadings();
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
         try {
@@ -156,10 +151,8 @@ public class TeleOp extends OpMode {
         try {
             ArrayList<AprilTagDetection> currentDetections = aprilTag.getDetections();
             for (AprilTagDetection detection : currentDetections) {
-                if (detection.metadata == null) {
-                    continue;
-                }
-                if ((redID.contains(detection.metadata.id) && !color) || (blueID.contains(detection.metadata.id) && color)) {
+                // Either of our alliance's CELLs, as a cluster or a single tag.
+                if (CellTags.isOurs(detection, color)) {
                     return detection.ftcPose.x;
                 }
             }

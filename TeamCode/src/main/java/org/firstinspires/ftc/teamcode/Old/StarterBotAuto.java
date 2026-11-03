@@ -56,6 +56,7 @@ import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.vision.apriltag.AprilTagSingleDetection;
 
 import java.util.List;
 import java.util.Locale;
@@ -174,7 +175,7 @@ public class StarterBotAuto extends OpMode {
 
     private AprilTagProcessor aprilTag = null;
     protected VisionPortal portal = null;
-    protected AprilTagDetection targetTag = null;
+    protected AprilTagSingleDetection targetTag = null;
 
     /*
      * TECH TIP: State Machines
@@ -466,7 +467,7 @@ public class StarterBotAuto extends OpMode {
         telemetry.addData("Launcher enabled", !drivetrainOnly);
         telemetry.addLine();
         if (targetTag != null) {
-            telemetry.addData("Tag ID", targetTag.metadata.id);
+            telemetry.addData("Tag ID", targetTag.id);
             telemetry.addData("Tag X", targetTag.ftcPose.x);
             telemetry.addData("Tag Y", targetTag.ftcPose.y);
         }
@@ -706,7 +707,7 @@ public class StarterBotAuto extends OpMode {
                 leftFrontDrive.getTargetPosition(), rightFrontDrive.getTargetPosition());
         telemetry.addData("Position", data);
         if (targetTag != null) {
-            telemetry.addData("Tag ID", targetTag.metadata.id);
+            telemetry.addData("Tag ID", targetTag.id);
             telemetry.addData("Tag X", targetTag.ftcPose.x);
             telemetry.addData("Tag Y", targetTag.ftcPose.y);
         }
@@ -928,14 +929,18 @@ public class StarterBotAuto extends OpMode {
         return (driveTimer.seconds() > holdSeconds);
     }
 
-    protected AprilTagDetection locateTarget(int targetTagId) {
-        AprilTagDetection targetTag = null;
+    // SDK 12: tag IDs and metadata live on AprilTagSingleDetection; a tag that is
+    // part of a cluster comes back as an AprilTagClusterDetection instead.
+    protected AprilTagSingleDetection locateTarget(int targetTagId) {
+        AprilTagSingleDetection targetTag = null;
 
         if (aprilTag != null) {
             List<AprilTagDetection> currentDetections = aprilTag.getDetections();
             for (AprilTagDetection detection : currentDetections) {
-                if (detection.metadata != null && detection.metadata.id == targetTagId) {
-                    targetTag = detection;
+                if (!(detection instanceof AprilTagSingleDetection)) continue;
+                AprilTagSingleDetection single = (AprilTagSingleDetection) detection;
+                if (single.metadata != null && single.id == targetTagId) {
+                    targetTag = single;
                     break;
                 }
             }
