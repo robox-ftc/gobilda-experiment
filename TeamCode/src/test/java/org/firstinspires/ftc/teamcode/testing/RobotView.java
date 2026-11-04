@@ -170,13 +170,17 @@ public final class RobotView {
                 public void run() {
                     panel = new Panel();
                     frame = new JFrame("gobilda-experiment - teleop harness");
-                    frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                    frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
                     frame.setContentPane(panel);
                     frame.pack();
                     frame.setLocationRelativeTo(null);
                     frame.addWindowListener(new WindowAdapter() {
                         @Override public void windowClosed(WindowEvent e) { open = false; }
-                        @Override public void windowClosing(WindowEvent e) { open = false; }
+                        @Override public void windowClosing(WindowEvent e) {
+                            // Let the harness loop dispose the window on the
+                            // macOS first thread instead of from Swing's EDT.
+                            open = false;
+                        }
                     });
                     panel.setFocusable(true);
                     panel.addKeyListener(new KeyAdapter() {
@@ -222,7 +226,12 @@ public final class RobotView {
 
     public void close() {
         open = false;
-        if (frame != null) {
+        if (frame == null) return;
+        String osName = System.getProperty("os.name", "");
+        if (osName != null && osName.startsWith("Mac")) {
+            // GLFW and AppKit operations both belong on the first thread.
+            frame.dispose();
+        } else {
             SwingUtilities.invokeLater(new Runnable() {
                 public void run() { frame.dispose(); }
             });
