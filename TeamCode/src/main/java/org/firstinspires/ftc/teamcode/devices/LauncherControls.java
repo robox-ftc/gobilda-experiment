@@ -30,7 +30,7 @@ public class LauncherControls {
         }
         controls.rampPower = newReadings.bButton ? -1 : 1;
         if (!(newReadings.rightBumper || newReadings.bButton)) {
-            controls.wheelPower = controls.wheelPower * 0.85;
+            controls.wheelPower = controls.wheelPower * 0.7;
             controls.rampPower = 0;
         }
         if (newReadings.aButton) {

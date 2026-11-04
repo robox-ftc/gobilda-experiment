@@ -89,6 +89,6 @@ public class Drivetrain {
         telemetry.addData("Translation-Strafe:", controls.translationXPower);
         telemetry.addData("Rotation:", controls.rotationPower);
 
-        return new double[]{frontLeftPower, frontRightPower, rearRightPower, rearLeftPower};
+        return new double[]{frontLeftPower / 4, frontRightPower / 4, rearRightPower / 4, rearLeftPower / 4};
     }
 }

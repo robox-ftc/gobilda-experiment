@@ -88,15 +88,19 @@ public class Auto extends OpMode {
                 case PARK:
                     mode = Mode.LEAVE;
                     telemetry.addLine("Leave Auto is selected");
+                    break;
                 case LEAVE:
                     mode = Mode.SHOOT;
                     telemetry.addLine("Parking Auto is selected");
+                    break;
                 case SHOOT:
                     mode = Mode.INTAKE;
                     telemetry.addLine("Shoot-Intake Auto is selected");
+                    break;
                 case INTAKE:
                     mode = Mode.PARK;
                     telemetry.addLine("Shooting Auto is selected");
+                    break;
             }
         }
         telemetry.update();
@@ -163,8 +167,8 @@ public class Auto extends OpMode {
                     if (timer.milliseconds() > task.end) {
                         queue.remove();
                     } else {
-                        controls.translationXPower = pClamp(x);
-                        controls.translationYPower = pClamp(y);
+                        controls.translationXPower = clamp(x);
+                        controls.translationYPower = clamp(y);
                     }
                     if (intake != null) {
                         intake.spin(1);
@@ -177,7 +181,7 @@ public class Auto extends OpMode {
                     if (timer.milliseconds() > task.end) {
                         queue.remove();
                     } else {
-                        controls.rotationPower = pClamp(error * R);
+                        controls.rotationPower = clamp(error * R);
                     }
                     break;
                 case LAUNCH:
@@ -225,7 +229,7 @@ public class Auto extends OpMode {
         }
     }
 
-    private double pClamp(double error) {
+    private double clamp(double error) {
         return Math.min(Math.max(error * P, -1), 1);
     }
 }
