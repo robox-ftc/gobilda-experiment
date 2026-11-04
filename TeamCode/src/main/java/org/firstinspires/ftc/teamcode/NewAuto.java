@@ -131,15 +131,19 @@ public class NewAuto extends OpMode {
                 case PARK:
                     mode = Mode.LEAVE;
                     telemetry.addLine("Leave Auto is selected");
+                    break;
                 case LEAVE:
                     mode = Mode.SHOOT;
                     telemetry.addLine("Parking Auto is selected");
+                    break;
                 case SHOOT:
                     mode = Mode.INTAKE;
                     telemetry.addLine("Shoot-Intake Auto is selected");
+                    break;
                 case INTAKE:
                     mode = Mode.PARK;
                     telemetry.addLine("Shooting Auto is selected");
+                    break;
             }
         }
         telemetry.update();
@@ -197,8 +201,8 @@ public class NewAuto extends OpMode {
                     if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
                         queue.remove();
                     } else {
-                        controls.translationXPower = pClamp(errorX);
-                        controls.translationYPower = pClamp(errorY);
+                        controls.translationXPower = clamp(errorX);
+                        controls.translationYPower = clamp(errorY);
                     }
                     if (intake != null) {
                         intake.spin(1);
@@ -212,13 +216,17 @@ public class NewAuto extends OpMode {
                     if (Math.abs(error) <= RTOLERANCE || timer.milliseconds() > task.end) {
                         queue.remove();
                     } else {
-                        controls.rotationPower = pClamp(error * R);
+                        controls.rotationPower = clamp(error * R);
                     }
                     if (intake != null) {
                         intake.spin(0);
                     }
                     break;
                 case LAUNCH:
+                    if (timer.milliseconds() > task.end) {
+                        queue.remove();
+                        break;
+                    }
                     if (timer.milliseconds() > THRESHOLD && aprilTag != null) {
                         AprilTagDetection target = null;
                         try {
@@ -247,8 +255,9 @@ public class NewAuto extends OpMode {
                             ramp.spin(1);
                         } else {
                             launcher.abort();
-                            queue.remove();
                         }
+                    } else {
+                        queue.remove();
                     }
                     break;
                 default:
@@ -285,7 +294,7 @@ public class NewAuto extends OpMode {
         }
     }
 
-    private double pClamp(double error) {
+    private double clamp(double error) {
         return Math.min(Math.max(error * P, -1), 1);
     }
 }

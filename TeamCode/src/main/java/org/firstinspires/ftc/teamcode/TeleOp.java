@@ -35,7 +35,7 @@ public class TeleOp extends OpMode {
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
     private final double TOLERANCE = 0.05;
-    private final double SHOOTING_FRACTION = 0.8; // a bit lower
+    private final double SHOOTING_FRACTION = 0.5; // a bit lower
     private boolean color = true; // true: blue, false: red
     /*
      * Code to run ONCE when the driver hits INIT
@@ -130,19 +130,25 @@ public class TeleOp extends OpMode {
         DrivetrainControls driveControls = DrivetrainControls.readControls(gamePadReading);
         LauncherControls launcherControls = LauncherControls.readControls(gamePadReading);
         double intakePower = gamePadReading.bButton ? -0.5 : gamePadReading.rightTrigger;
-        intake.run(intakePower);
         if (gamePadReading.leftBumper) {
-            driveControls.rotationPower = -clamp(pinpoint.getHeading(AngleUnit.DEGREES) / 360.0);
-            driveControls.translationXPower = -clamp(x * TOLERANCE);
-            driveControls.translationYPower = -TOLERANCE;
             launcherControls.wheelPower = 1;
-            launcherControls.rampPower = launcher.getLeftWheelRPM() / Launcher.LAUNCHER_MAX_VELOCITY_TPS > SHOOTING_FRACTION ? 1 : 0;
-            launcher.run(launcherControls);
+            if (launcher.getLeftWheelRPM() / Launcher.LAUNCHER_MAX_VELOCITY_RPM > SHOOTING_FRACTION) {
+                launcherControls.wheelPower = SHOOTING_FRACTION;
+                launcherControls.rampPower = 1;
+                intakePower = 1;
+            } else {
+                driveControls.translationXPower = -clamp(x * TOLERANCE);
+                try {
+                    driveControls.rotationPower = -clamp(pinpoint.getHeading(AngleUnit.DEGREES) / 360.0);
+                } catch (Exception ignored) {}
+            }
             ramp.run(launcherControls);
+            launcher.run(launcherControls);
         } else {
             launcher.run(launcherControls);
             ramp.run(launcherControls);
         }
+        intake.run(intakePower);
         drivetrain.run(driveControls);
         if (pinpoint != null) {
             telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));
