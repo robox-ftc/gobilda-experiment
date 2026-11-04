@@ -89,6 +89,9 @@ tasks.register('gamepadHarness', JavaExec) {
     dependsOn 'compileDebugUnitTestJavaWithJavac'
     mainClass = 'org.firstinspires.ftc.teamcode.testing.GamepadHarness'
     classpath = files({ tasks.named('testDebugUnitTest').get().classpath })
+    if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+        jvmArgs '-XstartOnFirstThread'
+    }
     standardInput = System.in
 }
 
@@ -115,5 +118,8 @@ tasks.register('gamepadGui', JavaExec) {
     mainClass = 'org.firstinspires.ftc.teamcode.testing.GamepadHarness'
     classpath = files({ tasks.named('testDebugUnitTest').get().classpath })
     args '--gui'
+    if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+        jvmArgs '-XstartOnFirstThread'
+    }
     standardInput = System.in
 }

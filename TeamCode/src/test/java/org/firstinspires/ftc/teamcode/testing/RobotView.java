@@ -166,7 +166,7 @@ public final class RobotView {
             return false;
         }
         try {
-            SwingUtilities.invokeAndWait(new Runnable() {
+            Runnable createWindow = new Runnable() {
                 public void run() {
                     panel = new Panel();
                     frame = new JFrame("gobilda-experiment - teleop harness");
@@ -187,9 +187,23 @@ public final class RobotView {
                         }
                     });
                     frame.setVisible(true);
+                    String osName = System.getProperty("os.name");
+                    if (osName != null && osName.startsWith("Mac")) {
+                        frame.setAlwaysOnTop(true);
+                    }
+                    frame.toFront();
+                    frame.requestFocus();
                     panel.requestFocusInWindow();
                 }
-            });
+            };
+            String osName = System.getProperty("os.name", "");
+            if (osName != null && osName.startsWith("Mac")) {
+                // With -XstartOnFirstThread, initializing AWT through
+                // invokeAndWait can deadlock the macOS native event loop.
+                createWindow.run();
+            } else {
+                SwingUtilities.invokeAndWait(createWindow);
+            }
         } catch (Exception e) {
             System.err.println("Could not open the window: " + e);
             return false;
