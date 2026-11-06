@@ -230,6 +230,6 @@ public class Auto extends OpMode {
     }
 
     private double clamp(double error) {
-        return Math.min(Math.max(error * P, -1), 1);
+        return Math.min(Math.max(error, -1), 1);
     }
 }
