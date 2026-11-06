@@ -138,9 +138,6 @@ public class TeleOp extends OpMode {
                 intakePower = 1;
             } else {
                 driveControls.translationXPower = -clamp(x * TOLERANCE);
-                try {
-                    driveControls.rotationPower = -clamp(pinpoint.getHeading(AngleUnit.DEGREES) / 360.0);
-                } catch (Exception ignored) {}
             }
             ramp.run(launcherControls);
             launcher.run(launcherControls);
