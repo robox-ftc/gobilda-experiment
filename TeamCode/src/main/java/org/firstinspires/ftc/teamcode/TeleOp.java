@@ -145,7 +145,7 @@ public class TeleOp extends OpMode {
             launcher.run(launcherControls);
             ramp.run(launcherControls);
         }
-        intake.run(intakePower);
+        intake.run(Math.max(intakePower, launcherControls.intake));
         drivetrain.run(driveControls);
         if (pinpoint != null) {
             telemetry.addData("X", pinpoint.getPosX(DistanceUnit.INCH));
