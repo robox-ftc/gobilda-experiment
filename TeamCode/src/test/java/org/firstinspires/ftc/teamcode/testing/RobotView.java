@@ -191,10 +191,6 @@ public final class RobotView {
                         }
                     });
                     frame.setVisible(true);
-                    String osName = System.getProperty("os.name");
-                    if (osName != null && osName.startsWith("Mac")) {
-                        frame.setAlwaysOnTop(true);
-                    }
                     frame.toFront();
                     frame.requestFocus();
                     panel.requestFocusInWindow();

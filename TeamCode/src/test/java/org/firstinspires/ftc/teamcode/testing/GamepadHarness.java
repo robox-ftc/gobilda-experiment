@@ -101,19 +101,14 @@ public final class GamepadHarness {
 
         // Initialize Swing before GLFW so macOS's AppKit loop is established
         // before GLFW starts polling the connected controller.
-        boolean useGlfw = true;
-        if (useGlfw && !glfwInit()) {
+        if (!glfwInit()) {
             if (guiView != null) guiView.close();
             System.err.println("Could not start GLFW, so no gamepad can be read.");
             System.exit(1);
         }
         try {
-            int[] pads = useGlfw ? findGamepads() : new int[0];
-            if (useGlfw) {
-                printDetected(pads);
-            } else {
-                System.out.println("macOS GUI uses keyboard controls; GLFW gamepad polling is disabled.");
-            }
+            int[] pads = findGamepads();
+            printDetected(pads);
             if (probeOnly) return;
             if (pads.length == 0 && !gui) {
                 System.out.println("\nPlug in or pair a controller and run this again.");
@@ -122,12 +117,15 @@ public final class GamepadHarness {
             if (rawOnly) {
                 runRaw(pads[0]);
             } else if (gui) {
-                runGui(pads, type, guiView, useGlfw);
+                runGui(pads, type, guiView);
             } else {
                 run(pads, type);
             }
         } finally {
-            if (useGlfw) glfwTerminate();
+            // The window ignores its close button until the harness loop disposes
+            // it, so a failure before that loop must not leave it open.
+            if (guiView != null) guiView.close();
+            glfwTerminate();
         }
     }
 
@@ -266,8 +264,7 @@ public final class GamepadHarness {
      *
      * <p>Falls back to the console if there is no display.
      */
-    private static void runGui(int[] pads, Class<? extends OpMode> type,
-                               RobotView view, boolean useGlfw) {
+    private static void runGui(int[] pads, Class<? extends OpMode> type, RobotView view) {
         if (view == null) {
             run(pads, type);
             return;
@@ -281,37 +278,30 @@ public final class GamepadHarness {
 
         System.out.println();
         System.out.println("Window open, running " + runner.name() + " on stand-in motors.");
-        if (useGlfw) {
-            System.out.println("Choose options on the pad, then START (or S) runs it.");
-            System.out.println("R restarts. BACK + START on the pad, or closing the window, quits.");
-        } else {
-            System.out.println("Keyboard controls: S starts, R restarts, Esc quits.");
-            view.setInputStatus("MACOS GUI - keyboard controls: S starts, R restarts, Esc quits");
-        }
+        System.out.println("Choose options on the pad, then START (or S) runs it.");
+        System.out.println("R restarts. BACK + START on the pad, or closing the window, quits.");
 
-        if (useGlfw && pads.length == 0) {
+        if (pads.length == 0) {
             view.setInputStatus("NO CONTROLLER FOUND - S still runs it with no choices made");
             System.out.println("No controller found. The window opens anyway.");
         }
 
-        GLFWGamepadState state = useGlfw ? GLFWGamepadState.create() : null;
+        GLFWGamepadState state = GLFWGamepadState.create();
         boolean warnedNotReporting = false;
         boolean startWasDown = false;
         long lastNanos = System.nanoTime();
 
         try {
             while (view.isOpen()) {
-                if (useGlfw) {
-                    glfwPollEvents();
-                    if (!poll(pads, ds, state) && !warnedNotReporting) {
-                        System.out.println("!! glfwGetGamepadState is returning false: the pad is not being");
-                        System.out.println("!! read, so the window is stale. Try --args=\"--raw\".");
-                        warnedNotReporting = true;
-                    }
+                glfwPollEvents();
+                if (!poll(pads, ds, state) && !warnedNotReporting) {
+                    System.out.println("!! glfwGetGamepadState is returning false: the pad is not being");
+                    System.out.println("!! read, so the window is stale. Try --args=\"--raw\".");
+                    warnedNotReporting = true;
                 }
-                if (useGlfw && pads.length > 0 && ds.held1.back && ds.held1.start) break;
+                if (pads.length > 0 && ds.held1.back && ds.held1.start) break;
 
-                boolean padStart = useGlfw && ds.held1.start && !startWasDown && !ds.held1.back;
+                boolean padStart = ds.held1.start && !startWasDown && !ds.held1.back;
                 startWasDown = ds.held1.start;
                 boolean restart = view.consumeResetRequest();
                 boolean startPressed = view.consumeStartRequest() || padStart;
