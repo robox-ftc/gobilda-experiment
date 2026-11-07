@@ -141,7 +141,8 @@ public class BIOBUZZAuto extends OpMode {
 
             case Park:
                 if (HiveSide) {
-                    queue.add(new Task(0, 3000, Task.Type.TRANSLATE, -0.14, 0.25));
+                    queue.add(new Task(0, 800, Task.Type.TRANSLATE, -0.5, 0));
+                    queue.add(new Task(0, 1500, Task.Type.TRANSLATE, -0.1, 0.25));
                 } else {
                     queue.add(new Task(0, 3000, Task.Type.TRANSLATE, 0.25, 0.14));
                 }
@@ -170,13 +171,14 @@ public class BIOBUZZAuto extends OpMode {
                 break;
             case Intake:
                 if (HiveSide) {
-                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.8, 3000)); //Time, Power, and spin up time
-                    queue.add(new Task(0, 810, Task.Type.ROTATE, 0.5, 0));
-                    queue.add(new Task(0, 2000, Task.Type.TRANSLATE, 0, -0.5));
-                    queue.add(new Task(0, 2000, Task.Type.TRANSLATE, 0, 0.5));
-                    queue.add(new Task(0, 810, Task.Type.ROTATE, -0.5, 0));
-                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.8, 3000));
-                    queue.add(new Task(0, 3000, Task.Type.TRANSLATE, -0.14, 0.25));
+                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.9, 3000));//Time, Power, and spin up time
+                    queue.add(new Task(0, 200, Task.Type.TRANSLATE, 0, 0.2));
+                    queue.add(new Task(0, 300, Task.Type.ROTATE, 0.5, 0));
+                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, -0.5));
+                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 0.5));
+                    queue.add(new Task(0, 300, Task.Type.ROTATE, -0.5, 0));
+                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.9, 3000));
+                    queue.add(new Task(0, 500, Task.Type.TRANSLATE, -0.2, 0.25));
                 } else {
                     queue.add(new Task(0, 3000, Task.Type.TRANSLATE, 0.25, 0.14));
                     queue.add(new Task(0, 810, Task.Type.ROTATE, -0.5, 0));

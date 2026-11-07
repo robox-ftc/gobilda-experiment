@@ -110,19 +110,20 @@ public class Auto extends OpMode {
     public void start() {
         switch (mode) {
             case LEAVE:
-                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 0.5));
+                queue.add(new Task(1000, 1500, Task.Type.TRANSLATE, 0, 0.2));
                 break;
             case PARK:
-                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 0.5));
+                queue.add(new Task(1000, 1500, Task.Type.TRANSLATE, 0, 0.2));
                 queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -0.35));
                 break;
             case SHOOT:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.8, 2));
-                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -0.4, 0.5));
-                queue.add(new Task(7000, 9000, Task.Type.TRANSLATE, 0, 0.75));
+                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.77, 2));
+                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -0.1, 0));
+                // tuned to specific speed
+                //queue.add(new Task(7000, 9000, Task.Type.TRANSLATE, 0, 0.1));
                 break;
             case INTAKE:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.8, 2));
+                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.77, 2));
                 queue.add(new Task(5500, 6000, Task.Type.ROTATE, 0.1, 0));
                 queue.add(new Task(5500, 7000, Task.Type.TRANSLATE, -0.75, -0.2));
                 queue.add(new Task(7500, 8000, Task.Type.ROTATE, -0.1, 0));
