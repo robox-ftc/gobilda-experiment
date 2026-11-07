@@ -13,7 +13,6 @@ import org.firstinspires.ftc.teamcode.devices.Intake;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
 import org.firstinspires.ftc.teamcode.devices.Ramp;
 import org.firstinspires.ftc.teamcode.devices.Task;
-import org.firstinspires.ftc.teamcode.devices.Turret;
 
 import java.util.*;
 @Autonomous(name = "HiveKnightAuto", group = "Robot")
@@ -32,7 +31,6 @@ public class BIOBUZZAuto extends OpMode {
     private Intake intake;
     private Launcher launcher;
     private Ramp ramp;
-    private Turret turret;
     private DrivetrainControls controls;
     private boolean HiveSide;
     private boolean SideSelected;
