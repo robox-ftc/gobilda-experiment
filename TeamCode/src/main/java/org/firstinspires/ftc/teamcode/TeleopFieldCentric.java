@@ -102,6 +102,9 @@ public class TeleopFieldCentric extends OpMode {
 
         // Update gamepad
         gamePadReading.update(gamepad1, gamepad2);
+        if (gamePadReading.backWasPressed) {
+            pinpoint.resetPosAndIMU();
+        }
 
         // Update Pinpoint
         pinpoint.update();
