@@ -118,8 +118,8 @@ public class Auto extends OpMode {
                 break;
             case SHOOT:
                 queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.8, 2));
-                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -1, 0.75));
-                queue.add(new Task(7000, 8500, Task.Type.TRANSLATE, 0, 1));
+                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -0.4, 0.5));
+                queue.add(new Task(7000, 9000, Task.Type.TRANSLATE, 0, 0.75));
                 break;
             case INTAKE:
                 queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.8, 2));
