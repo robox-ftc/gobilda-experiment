@@ -36,7 +36,7 @@ public class NewAuto extends OpMode {
     private static final double RTOLERANCE = 5; // Arbitrary
 
     // Tunable P
-    private final double P = 1.0 / 20.0;
+    private final double P = 1.0 / 40.0;
     // Rotation Factor
     private final double R = 2 * 12.0 / 360.0;
     private boolean color = true; // default blue
@@ -153,30 +153,30 @@ public class NewAuto extends OpMode {
     public void start() {
         switch (mode) {
             case LEAVE:
-                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 15));
+                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 10));
                 break;
             case PARK:
-                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 15));
+                queue.add(new Task(1000, 2000, Task.Type.TRANSLATE, 0, 10));
                 queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -7));
                 break;
             case SHOOT:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.7, 2));
-                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -30, 20));
-                queue.add(new Task(7000, 8500, Task.Type.TRANSLATE, 0, 90));
+                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 2)); // -25, 10 is 30 inches left and 10 inches forward
+                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -20, 10)); // -25, 10 is 30 inches left and 10 inches forward
+                queue.add(new Task(7000, 8500, Task.Type.TRANSLATE, -20, 100));
                 break;
             case INTAKE:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.7, 2));
+                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 2));
                 queue.add(new Task(5500, 6000, Task.Type.ROTATE, -20, 0));
                 queue.add(new Task(5500, 7000, Task.Type.TRANSLATE, -25, -6));
                 queue.add(new Task(7500, 8000, Task.Type.ROTATE, 20, 0));
-                queue.add(new Task(8500, 9000, Task.Type.TRANSLATE, 25, 6));
-                queue.add(new Task(9250, 9750, Task.Type.TRANSLATE, 0, -3));
+                queue.add(new Task(8500, 9000, Task.Type.TRANSLATE, 0, 0));
                 queue.add(new Task(10000, 15000, Task.Type.LAUNCH, 16, 40));
-                queue.add(new Task(15500, 16500, Task.Type.TRANSLATE, -30, 20));
-                queue.add(new Task(17000, 18500, Task.Type.TRANSLATE, 0, 90));
+                queue.add(new Task(15500, 16500, Task.Type.TRANSLATE, -30, 10));
+                queue.add(new Task(17000, 18500, Task.Type.TRANSLATE, -30, 100));
                 break;
         }
         timer.reset();
+        pinpoint.resetPosAndIMU();
     }
 
     @Override
@@ -195,8 +195,8 @@ public class NewAuto extends OpMode {
 
             switch (task.type) {
                 case TRANSLATE:
-                    double errorY = task.target - x;
-                    double errorX = task.target2 - y;
+                    double errorX = task.target - x;
+                    double errorY = task.target2 - y;
                     // square distance, unlikely it'll reach the end of the task
                     if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
                         queue.remove();
@@ -228,22 +228,22 @@ public class NewAuto extends OpMode {
                         break;
                     }
                     if (timer.milliseconds() > THRESHOLD && aprilTag != null) {
-                        AprilTagDetection target = null;
-                        try {
-                            ArrayList<AprilTagDetection> currentDetections = aprilTag.getDetections();
-                            for (AprilTagDetection detection : currentDetections) {
-                                if (detection.metadata == null) {
-                                    continue;
-                                }
-                                if ((redID.contains(detection.metadata.id) && !color) || (blueID.contains(detection.metadata.id) && color)) {
-                                    target = detection;
-                                    break;
-                                }
-                            }
-                        } catch (Exception ignored) {}
-                        if (target == null) {
-                            break;
-                        }
+//                        AprilTagDetection target = null;
+//                        try {
+//                            ArrayList<AprilTagDetection> currentDetections = aprilTag.getDetections();
+//                            for (AprilTagDetection detection : currentDetections) {
+//                                if (detection.metadata == null) {
+//                                    continue;
+//                                }
+//                                if ((redID.contains(detection.metadata.id) && !color) || (blueID.contains(detection.metadata.id) && color)) {
+//                                    target = detection;
+//                                    break;
+//                                }
+//                            }
+//                        } catch (Exception ignored) {}
+//                        if (target == null) {
+//                            break;
+//                        }
                     }
                     if (intake != null && launcher != null) {
                         int phase = launcherPhase(task, timer.milliseconds());
