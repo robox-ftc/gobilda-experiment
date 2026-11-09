@@ -120,7 +120,7 @@ public class Auto extends OpMode {
                 queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.77, 2));
                 queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -0.1, 0));
                 // tuned to specific speed
-                //queue.add(new Task(7000, 9000, Task.Type.TRANSLATE, 0, 0.1));
+                queue.add(new Task(7000, 9000, Task.Type.TRANSLATE, 0, 0.1));
                 break;
             case INTAKE:
                 queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.77, 2));

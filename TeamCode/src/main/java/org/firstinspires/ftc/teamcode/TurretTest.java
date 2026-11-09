@@ -73,7 +73,7 @@ public class TurretTest extends OpMode {
     public AprilTagDetection getAprilTag(int targetId) {
         List<AprilTagDetection> currentDetections = aprilTag.getDetections();
         for (AprilTagDetection detection : currentDetections) {
-            if (detection.metadata != null && detection.metadata.id == targetId) {
+            if (detection.ftcPose != null) {
                 return detection;
             }
         }
