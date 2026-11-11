@@ -161,20 +161,23 @@ public class NewAuto extends OpMode {
                 queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -10));
                 break;
             case SHOOT:
-                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 4)); // 4 inches forward, at least, pretend every value is x2
-                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.67, 2));
-                queue.add(new Task(6500, 7500, Task.Type.TRANSLATE, -50, 15)); // -50, 10 is 50 inches left and 15 inches forward
-                queue.add(new Task(8000, 9000, Task.Type.TRANSLATE, -50, 75)); // -50, 10 is 50 inches left and 75 inches forward
+                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 10)); // 10 inches forward
+                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.7, 2));
+                queue.add(new Task(6500, 7500, Task.Type.TRANSLATE, -30, 15)); // -20, 15 is 20 inches left and 15 inches forward
+                queue.add(new Task(8000, 9000, Task.Type.TRANSLATE, -30, 80)); // -20, 55 is 20 inches left and 55 inches forward
+                queue.add(new Task(9000, 10000, Task.Type.TRANSLATE, -40, 80)); // -30, 75 is 30 inches left and 75 inches forward
+                queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, -60, 80)); // -40, 75 is 40 inches left and 70 inches forward
+                queue.add(new Task(14000, 15000, Task.Type.TRANSLATE, -65, 90)); // -40, 85 is 40 inches left and 85 inches forward
                 break;
             case INTAKE:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 2));
-                queue.add(new Task(5500, 6000, Task.Type.ROTATE, -20, 0));
-                queue.add(new Task(5500, 7000, Task.Type.TRANSLATE, -25, -6));
-                queue.add(new Task(7500, 8000, Task.Type.ROTATE, 20, 0));
-                queue.add(new Task(8500, 9000, Task.Type.TRANSLATE, 0, 0));
-                queue.add(new Task(10000, 15000, Task.Type.LAUNCH, 16, 40));
-                queue.add(new Task(15500, 16500, Task.Type.TRANSLATE, -50, 10));
-                queue.add(new Task(17000, 18500, Task.Type.TRANSLATE, -50, 100));
+                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 10)); // 10 inches forward
+                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.7, 2));
+                queue.add(new Task(6500, 7500, Task.Type.TRANSLATE, -35, -5));
+                queue.add(new Task(8500, 9500, Task.Type.TRANSLATE, 5, -5));
+                queue.add(new Task(10000, 15000, Task.Type.LAUNCH, 0.68, 2));
+                queue.add(new Task(15500, 16500, Task.Type.TRANSLATE, -20, 15)); // -20, 15 is 20 inches left and 15 inches forward
+                queue.add(new Task(17000, 18000, Task.Type.TRANSLATE, -20, 75)); // -20, 75 is 20 inches left and 75 inches forward
+                queue.add(new Task(18500, 19000, Task.Type.TRANSLATE, -35, 100)); // -35, 85 is 35 inches left and 55 inches forward
                 break;
         }
         timer.reset();
@@ -197,8 +200,8 @@ public class NewAuto extends OpMode {
             if (timer.milliseconds() >= task.begin) {
                 switch (task.type) {
                     case TRANSLATE:
-                        double errorX = task.target - x;
-                        double errorY = task.target2 - y;
+                        double errorX = x + task.target; // Corrected logic
+                        double errorY = y + task.target2;
                         // square distance, unlikely it'll reach the end of the task
                         if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
                             controls.translationXPower = 0;
@@ -213,7 +216,7 @@ public class NewAuto extends OpMode {
                         }
                         break;
                     case ROTATE:
-                        double error = task.target - heading;
+                        double error = task.target + heading;
                         if (error > 180) error -= 360;
                         if (error < -180) error += 360;
                         // Try to avoid the robot turning more than 360

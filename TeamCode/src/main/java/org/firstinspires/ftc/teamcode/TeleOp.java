@@ -75,8 +75,8 @@ public class TeleOp extends OpMode {
                     .setDrawCubeProjection(true)
                     .setDrawTagOutline(true)
                     .setCameraPose(
-                            new Position(DistanceUnit.INCH, 6, 7, 14, time),
-                            new YawPitchRollAngles(AngleUnit.DEGREES, 0, 15, 0, time))
+                            new Position(DistanceUnit.INCH, 0, 5, 14, time),
+                            new YawPitchRollAngles(AngleUnit.DEGREES, 0, 45, 0, time))
                     .build();
             visionPortal = new VisionPortal.Builder()
                     .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
@@ -192,11 +192,11 @@ public class TeleOp extends OpMode {
     }
 
     private double angle(double heading) {
-        while (heading > 180) {
-            heading -= 180;
+        while (heading >= 180) {
+            heading -= 360;
         }
         while (heading < -180) {
-            heading += 180;
+            heading += 360;
         }
         return heading;
     }
