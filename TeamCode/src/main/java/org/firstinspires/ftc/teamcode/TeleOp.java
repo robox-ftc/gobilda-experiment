@@ -19,6 +19,7 @@ import org.firstinspires.ftc.teamcode.devices.Ramp;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.vision.apriltag.AprilTagSingleDetection;
 
 import java.util.*;
 
@@ -159,11 +160,14 @@ public class TeleOp extends OpMode {
         try {
             ArrayList<AprilTagDetection> currentDetections = aprilTag.getDetections();
             for (AprilTagDetection detection : currentDetections) {
-                if (detection.metadata == null) {
+                if (!(detection instanceof AprilTagSingleDetection)) {
                     continue;
                 }
-                if ((redID.contains(detection.metadata.id) && !color) || (blueID.contains(detection.metadata.id) && color)) {
-                    return detection.ftcPose.x;
+                AprilTagSingleDetection single = (AprilTagSingleDetection) detection;
+                if (single.metadata != null
+                        && ((redID.contains(single.id) && !color)
+                        || (blueID.contains(single.id) && color))) {
+                    return single.ftcPose.x;
                 }
             }
         } catch (Exception ignored) {}

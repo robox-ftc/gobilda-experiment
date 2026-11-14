@@ -20,6 +20,7 @@ import org.firstinspires.ftc.teamcode.data.Target;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.vision.apriltag.AprilTagSingleDetection;
 
 import java.util.List;
 
@@ -73,8 +74,12 @@ public class TurretTest extends OpMode {
     public AprilTagDetection getAprilTag(int targetId) {
         List<AprilTagDetection> currentDetections = aprilTag.getDetections();
         for (AprilTagDetection detection : currentDetections) {
-            if (detection.metadata != null && detection.metadata.id == targetId) {
-                return detection;
+            if (!(detection instanceof AprilTagSingleDetection)) {
+                continue;
+            }
+            AprilTagSingleDetection single = (AprilTagSingleDetection) detection;
+            if (single.metadata != null && single.id == targetId) {
+                return single;
             }
         }
         telemetry.addLine("UNABLE TO DETECT APRILTAG");
