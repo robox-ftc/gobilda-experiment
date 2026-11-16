@@ -48,10 +48,34 @@ public class DriverStation {
      *         OpMode, where a single GamePadReadings is reused).
      */
     public GamePadReadings tick() {
-        gamepad1.copy(held1);
-        gamepad2.copy(held2);
+        copyHeld();
         readings.update(gamepad1, gamepad2);
         return readings;
+    }
+
+    private boolean startTaken1;
+
+    /**
+     * Marks the first driver's START, held now, as the press that starts the
+     * OpMode. Until it is let go the OpMode sees START up: on the robot START
+     * is a button on the Driver Station's screen, so the press that starts an
+     * OpMode never reaches it. A later press does.
+     */
+    public void takeStart1() {
+        startTaken1 = true;
+    }
+
+    private void copyHeld() {
+        if (startTaken1 && !held1.start) startTaken1 = false;
+        if (startTaken1) {
+            Gamepad shown = new Gamepad();
+            shown.copy(held1);
+            shown.start = false;
+            gamepad1.copy(shown);
+        } else {
+            gamepad1.copy(held1);
+        }
+        gamepad2.copy(held2);
     }
 
     /** Lets go of everything on both gamepads, without ticking. */
@@ -63,8 +87,7 @@ public class DriverStation {
      * edge, so the OpMode would never see the press.
      */
     public void copyIn() {
-        gamepad1.copy(held1);
-        gamepad2.copy(held2);
+        copyHeld();
     }
 
     /**

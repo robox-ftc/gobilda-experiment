@@ -67,8 +67,12 @@ public final class GamepadHarness {
     /** The OpMode run when no {@code --opmode=} is given. */
     static final String DEFAULT_OPMODE = "BIOBUZZAuto";
 
-    /** The Driver Station applies a deadzone before sending; without one, sticks drift. */
-    private static final double STICK_DEADZONE = 0.05;
+    /**
+     * The Driver Station applies a deadzone before sending; without one, sticks
+     * drift. An Xbox One pad here was seen resting at 0.0665 on one axis after
+     * being let go, so this has to clear that.
+     */
+    static final double STICK_DEADZONE = 0.10;
 
     private static final long CYCLE_MS = 20; // 50 Hz, about the robot's loop rate
 
@@ -242,6 +246,8 @@ public final class GamepadHarness {
                 boolean startPressed = ds.held1.start && !startWasDown && !ds.held1.back;
                 startWasDown = ds.held1.start;
                 if (startPressed) {
+                    // Starting the OpMode uses this press up; while it runs, START is the OpMode's.
+                    if (runner.phase() != OpModeRunner.Phase.RUNNING) ds.takeStart1();
                     if (runner.phase() == OpModeRunner.Phase.STOPPED) {
                         runner.close();
                         robot = new DesktopRobot();
@@ -320,6 +326,8 @@ public final class GamepadHarness {
 
                 boolean padStart = ds.held1.start && !startWasDown && !ds.held1.back;
                 startWasDown = ds.held1.start;
+                // Starting the OpMode uses this press up; while it runs, START is the OpMode's.
+                if (padStart && runner.phase() != OpModeRunner.Phase.RUNNING) ds.takeStart1();
                 boolean restart = view.consumeResetRequest();
                 boolean startPressed = view.consumeStartRequest() || padStart;
                 if (startPressed && runner.phase() == OpModeRunner.Phase.STOPPED) restart = true;
@@ -486,7 +494,7 @@ public final class GamepadHarness {
         return state.buttons(button) == GLFW_PRESS;
     }
 
-    private static float deadzoned(float value) {
+    static float deadzoned(float value) {
         return Math.abs(value) < STICK_DEADZONE ? 0f : value;
     }
 
