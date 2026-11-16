@@ -292,7 +292,11 @@ public final class GamepadHarness {
         System.out.println();
         System.out.println("Window open, running " + runner.name() + " on stand-in motors.");
         System.out.println("Choose options on the pad, then START (or S) runs it.");
-        System.out.println("R restarts. BACK + START on the pad, or closing the window, quits.");
+        System.out.println("R restarts. O, or clicking the OpMode name, picks another OpMode.");
+        System.out.println("BACK + START on the pad, or closing the window, quits.");
+
+        view.setOpModes(OpModeCatalog.discover());
+        view.setCurrentOpMode(OpModeCatalog.describe(type));
 
         if (pads.length == 0) {
             view.setInputStatus("NO CONTROLLER FOUND - S still runs it with no choices made");
@@ -319,6 +323,17 @@ public final class GamepadHarness {
                 boolean restart = view.consumeResetRequest();
                 boolean startPressed = view.consumeStartRequest() || padStart;
                 if (startPressed && runner.phase() == OpModeRunner.Phase.STOPPED) restart = true;
+
+                // Picking an OpMode loads it fresh, in INIT, like choosing it on the Driver Station.
+                Class<? extends OpMode> picked = view.consumeOpModeRequest();
+                if (picked != null) {
+                    type = picked;
+                    restart = true;
+                    startPressed = false;
+                    OpModeCatalog.Entry entry = OpModeCatalog.describe(type);
+                    view.setCurrentOpMode(entry);
+                    System.out.println("Loaded " + entry + ".");
+                }
 
                 if (restart) {
                     runner.close();

@@ -54,7 +54,15 @@ X Launch or Y LaunchAndPark; the right bumper goes back to choosing a side.
 Then **START** on the pad, or **S** in the window, runs it. **R** restarts it in
 INIT. BACK + START, Esc, or closing the window quits.
 
-To run a different OpMode, pass its class name:
+To test a different OpMode, press **O** or click the OpMode name at the bottom
+right of the window. The menu lists what the Driver Station would: every
+`@TeleOp` (drive it with the pad) and `@Autonomous` OpMode in TeamCode, found
+automatically. Picking one loads it fresh in INIT. A `LinearOpMode` is listed
+but greyed out, since the harness only runs iterative OpModes. An OpMode that
+needs something the stand-in robot lacks (such as the turret motor, or a webcam
+and OpenCV) shows as crashed, with the line that asked for it.
+
+To start on a particular OpMode, pass its class name:
 `gradlew :TeamCode:gamepadGui --args="--gui --opmode=SomeOpMode"`.
 
 The window shows the robot dead reckoned on a 12 ft field, the ball path

@@ -9,6 +9,7 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.event.KeyAdapter;
@@ -29,10 +30,16 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 import javax.swing.JFrame;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.SwingUtilities;
+
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 /**
  * A window showing what a running OpMode just told the robot to do.
@@ -100,6 +107,7 @@ public final class RobotView {
     private final List<Shortcut> shortcuts = Arrays.asList(
             new Shortcut(KeyEvent.VK_S, "S", "start", () -> startRequested = true),
             new Shortcut(KeyEvent.VK_R, "R", "restart", () -> resetRequested = true),
+            new Shortcut(KeyEvent.VK_O, "O", "opmode", () -> showOpModeMenu(null)),
             new Shortcut(KeyEvent.VK_ESCAPE, "Esc", "quit", () -> open = false));
 
     private static final Color BG = new Color(0x1E1F22);
@@ -153,6 +161,11 @@ public final class RobotView {
     private volatile boolean startRequested;
     private volatile boolean canSetStartingPosition;
     private volatile Point2D.Double requestedStartingPosition;
+    private volatile List<OpModeCatalog.Entry> opModes = new ArrayList<OpModeCatalog.Entry>();
+    private volatile OpModeCatalog.Entry currentOpMode;
+    private volatile Class<? extends OpMode> requestedOpMode;
+    /** Where the OpMode chip was last painted; read on the event thread only. */
+    private Rectangle opModeChip = new Rectangle();
 
     private final Deque<Point2D.Double> trail = new ArrayDeque<Point2D.Double>();
     private final List<String> telemetry = new ArrayList<String>();
@@ -174,7 +187,9 @@ public final class RobotView {
             Runnable createWindow = new Runnable() {
                 public void run() {
                     panel = new Panel();
-                    frame = new JFrame("gobilda-experiment - teleop harness");
+                    OpModeCatalog.Entry loaded = currentOpMode;
+                    frame = new JFrame("gobilda-experiment - "
+                            + (loaded != null ? loaded.name : "OpMode harness"));
                     frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
                     frame.setContentPane(panel);
                     frame.pack();
@@ -197,6 +212,10 @@ public final class RobotView {
                     });
                     panel.addMouseListener(new MouseAdapter() {
                         @Override public void mousePressed(MouseEvent e) {
+                            if (opModeChip.contains(e.getPoint())) {
+                                showOpModeMenu(e.getPoint());
+                                return;
+                            }
                             requestStartingPosition(e.getX(), e.getY(), panel.getWidth(), panel.getHeight());
                         }
                     });
@@ -258,6 +277,75 @@ public final class RobotView {
     /** True once the window {@link #close()} asked for is gone. */
     public boolean isDisposed() {
         return disposed;
+    }
+
+    /** The OpModes the picker offers. */
+    public void setOpModes(List<OpModeCatalog.Entry> entries) {
+        opModes = new ArrayList<OpModeCatalog.Entry>(entries);
+    }
+
+    /** The OpMode now loaded, shown in the status bar and the title. */
+    public void setCurrentOpMode(final OpModeCatalog.Entry entry) {
+        currentOpMode = entry;
+        final JFrame f = frame;
+        if (f == null || entry == null) return;
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() { f.setTitle("gobilda-experiment - " + entry.name); }
+        });
+    }
+
+    /** The OpMode picked in the menu since the last call, once; otherwise null. */
+    public Class<? extends OpMode> consumeOpModeRequest() {
+        Class<? extends OpMode> requested = requestedOpMode;
+        requestedOpMode = null;
+        return requested;
+    }
+
+    /** Opens the picker at {@code where}, or above the status bar chip. Event thread only. */
+    private void showOpModeMenu(Point2D where) {
+        if (panel == null) return;
+        JPopupMenu menu = buildOpModeMenu(opModes, currentOpMode, entry -> {
+            requestedOpMode = entry.type;
+            panel.requestFocusInWindow();
+        });
+        int x = where != null ? (int) where.getX() : opModeChip.x;
+        int y = opModeChip.y - menu.getPreferredSize().height;
+        menu.show(panel, x, Math.max(0, y));
+    }
+
+    /**
+     * The picker: TeleOps, then autonomous OpModes, with the loaded one ticked
+     * and the ones the harness cannot run greyed out with the reason.
+     */
+    static JPopupMenu buildOpModeMenu(List<OpModeCatalog.Entry> entries,
+                                      OpModeCatalog.Entry current,
+                                      final Consumer<OpModeCatalog.Entry> onPick) {
+        JPopupMenu menu = new JPopupMenu();
+        OpModeCatalog.Kind section = null;
+        for (final OpModeCatalog.Entry entry : entries) {
+            if (entry.kind != section) {
+                if (section != null) menu.addSeparator();
+                section = entry.kind;
+                JMenuItem header = new JMenuItem(entry.kind == OpModeCatalog.Kind.TELEOP
+                        ? "TELEOP - drive it with the gamepad"
+                        : "AUTONOMOUS - choose options on the pad, then START");
+                header.setEnabled(false);
+                menu.add(header);
+            }
+            String label = entry.name + "   (" + entry.type.getSimpleName() + ")";
+            if (!entry.runnable()) label += "  - " + entry.unsupported;
+            JRadioButtonMenuItem item = new JRadioButtonMenuItem(label);
+            item.setSelected(current != null && current.type == entry.type);
+            item.setEnabled(entry.runnable());
+            item.addActionListener(e -> onPick.accept(entry));
+            menu.add(item);
+        }
+        if (entries.isEmpty()) {
+            JMenuItem none = new JMenuItem("No @TeleOp or @Autonomous OpModes found");
+            none.setEnabled(false);
+            menu.add(none);
+        }
+        return menu;
     }
 
     /** True once, if the operator asked for S: the Driver Station's START. */
@@ -958,12 +1046,64 @@ public final class RobotView {
         }
 
         private void drawStatus(Graphics2D g, Snapshot s, int x, int y, int w, int h) {
+            int chipLeft = drawOpModeChip(g, x, y, w, h);
+
             g.setFont(MONO);
             g.setColor(DIM);
-            g.drawString(String.format(Locale.ROOT,
-                    "x %6.1f in   y %6.1f in   heading %+7.1f deg       "
-                            + "dead reckoning only - no mass, no slip, no trajectory",
-                    s.x, s.y, s.heading), x + 2, y + 16);
+            String pose = String.format(Locale.ROOT,
+                    "x %6.1f in   y %6.1f in   heading %+7.1f deg", s.x, s.y, s.heading);
+            String full = pose + "       dead reckoning only - no mass, no slip, no trajectory";
+            boolean fits = x + 2 + g.getFontMetrics().stringWidth(full) + 12 <= chipLeft;
+            g.drawString(fits ? full : pose, x + 2, y + 16);
+        }
+
+        /**
+         * The loaded OpMode at the right of the status bar, which opens the
+         * picker when clicked. @return its left edge.
+         */
+        private int drawOpModeChip(Graphics2D g, int x, int y, int w, int h) {
+            OpModeCatalog.Entry current = currentOpMode;
+            if (current == null) {
+                opModeChip = new Rectangle();
+                return x + w;
+            }
+            String kind = current.kind.label.toUpperCase(Locale.ROOT);
+            String name = current.name;
+            String hint = "O or click to change";
+
+            g.setFont(LABEL);
+            int kindW = g.getFontMetrics().stringWidth(kind);
+            g.setFont(MONO_BOLD);
+            int nameW = g.getFontMetrics().stringWidth(name);
+            g.setFont(MONO);
+            int hintW = g.getFontMetrics().stringWidth(hint);
+
+            int chipH = h - 6;
+            int chipW = 8 + kindW + 10 + nameW + 14 + hintW + 10;
+            int cx = x + w - chipW;
+            int cy = y + 2;
+
+            g.setColor(PANEL);
+            g.fillRoundRect(cx, cy, chipW, chipH, 8, 8);
+            g.setColor(EDGE);
+            g.drawRoundRect(cx, cy, chipW, chipH, 8, 8);
+
+            int baseline = cy + chipH - 6;
+            int cursor = cx + 8;
+            g.setFont(LABEL);
+            g.setColor(current.kind == OpModeCatalog.Kind.TELEOP ? FWD : ACCENT);
+            g.drawString(kind, cursor, baseline);
+            cursor += kindW + 10;
+            g.setFont(MONO_BOLD);
+            g.setColor(TEXT);
+            g.drawString(name, cursor, baseline);
+            cursor += nameW + 14;
+            g.setFont(MONO);
+            g.setColor(DIM);
+            g.drawString(hint, cursor, baseline);
+
+            opModeChip = new Rectangle(cx, cy, chipW, chipH);
+            return cx;
         }
 
         private double clamp(double v) {
