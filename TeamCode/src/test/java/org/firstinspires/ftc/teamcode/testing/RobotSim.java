@@ -19,29 +19,36 @@ package org.firstinspires.ftc.teamcode.testing;
  */
 public final class RobotSim {
 
-    /** FTC field, wall to wall. */
-    public static final double FIELD_INCHES = 144.0;
+    /** FTC field, wall to wall. See {@link BiobuzzField}. */
+    public static final double FIELD_INCHES = BiobuzzField.FIELD_INCHES;
 
     /** Rough footprint of this robot, for drawing only. */
     public static final double ROBOT_INCHES = 17.0;
 
-    /*
-     * Somewhere to aim at. The position is a GUESS - it is not measured off a
-     * DECODE field - and it exists so the chassis has something to point at, not
-     * so anyone can read a range off the screen. Move it and nothing but the
-     * picture changes.
-     */
-    public static final double GOAL_X_INCHES = 12.0;
-    public static final double GOAL_Y_INCHES = 132.0;
 
     /*
-     * Speeds a goBILDA 5202 mecanum drive of about this size does on a good
-     * battery. Nothing here was measured on the real robot - they set the scale
-     * of the picture, not its correctness. If the robot on screen feels wrong
-     * next to the real one, these are the numbers to change.
+     * The goBILDA 2026-27 StarterBot mecanum base: a Strafer Chassis Kit
+     * (3209-0001-0007) with four 312 RPM 5203 Yellow Jacket motors (19.2:1)
+     * on 104 mm GripForce mecanum wheels. goBILDA quotes its theoretical speed
+     * as 5.57 ft/s - 312 RPM x pi x 104 mm = 66.8 in/s.
+     *
+     * Turning: a mecanum chassis spins at wheel speed / (half track + half
+     * wheelbase). The wheelbase is 336 mm (shafts 48 mm from each end of the
+     * 432 mm side channels, assembly guide Figure 5-A); the track is not
+     * dimensioned and is taken as about 400 mm. That gives 264 deg/s.
+     *
+     * A loaded robot does not reach free speed; LOADED_FRACTION is an
+     * assumption, not a measurement. Strafing is modelled at full speed, which
+     * a real mecanum base usually falls short of. Measure the real robot -
+     * one second at fixed power forward, sideways and turning, read off the
+     * Pinpoint - and put the numbers here.
      */
-    public static final double MAX_SPEED_IPS = 60.0;
-    public static final double MAX_TURN_DPS = 220.0;
+    public static final double FREE_SPEED_IPS = 312.0 / 60.0 * Math.PI * 104.0 / 25.4;
+    public static final double WHEELBASE_INCHES = 336.0 / 25.4, TRACK_INCHES = 400.0 / 25.4;
+    public static final double LOADED_FRACTION = 0.85;
+    public static final double MAX_SPEED_IPS = FREE_SPEED_IPS * LOADED_FRACTION;
+    public static final double MAX_TURN_DPS =
+            Math.toDegrees(MAX_SPEED_IPS / (TRACK_INCHES / 2 + WHEELBASE_INCHES / 2));
     // Deceleration is the same as acceleration here, which is the braking
     // case - and Drivetrain does set BRAKE on all four drive motors, so a
     // released stick really should stop the robot rather than let it drift.
@@ -94,6 +101,37 @@ public final class RobotSim {
         againstWall = false;
     }
 
+    /** Puts the robot at (x, y) facing {@code headingDeg}, stopped. */
+    public void setStartingPose(double x, double y, double headingDeg) {
+        this.headingDeg = wrap(headingDeg);
+        setStartingPosition(x, y);
+    }
+
+    /** Field-frame velocity, inches per second, for things the robot pushes. */
+    public double vxIps() { return vxIps; }
+    public double vyIps() { return vyIps; }
+    /** Turn rate, degrees per second clockwise. */
+    public double omegaDps() { return omegaDps; }
+
+    /**
+     * Something solid stopped the robot moving along the field direction
+     * (nx, ny), a unit vector pointing into the obstacle: drop that part of
+     * the velocity, as the walls do, so it does not stick and then leap away.
+     */
+    public void blockedAlong(double nx, double ny) {
+        double into = vxIps * nx + vyIps * ny;
+        if (into > 0) {
+            vxIps -= into * nx;
+            vyIps -= into * ny;
+        }
+    }
+
+    /** Half the robot's width along the field axes at its current heading. */
+    public double halfExtent() {
+        double h = Math.toRadians(headingDeg);
+        return ROBOT_INCHES / 2 * (Math.abs(Math.cos(h)) + Math.abs(Math.sin(h)));
+    }
+
     /** Advances the picture by {@code dtSec}. */
     public void step(double flPower, double frPower, double rlPower, double rrPower, double dtSec) {
 
@@ -131,7 +169,7 @@ public final class RobotSim {
 
         // Stop at the walls, and drop the velocity so the robot does not stick
         // to them and then leap away when you reverse.
-        double half = ROBOT_INCHES / 2;
+        double half = halfExtent();
         againstWall = false;
         if (xInches < half) { xInches = half; vxIps = 0; againstWall = true; }
         if (xInches > FIELD_INCHES - half) { xInches = FIELD_INCHES - half; vxIps = 0; againstWall = true; }
@@ -140,15 +178,12 @@ public final class RobotSim {
     }
 
     /**
-     * Bearing from the robot to the goal, degrees clockwise off the nose.
-     *
-     * <p>The launcher is fixed to the chassis, so this is the whole of the aiming
-     * problem: a shot goes where the robot is pointing.
+     * Bearing from the robot to the point (x, y), degrees clockwise off the
+     * nose. The launcher is fixed to the chassis, so this is the whole of the
+     * aiming problem: a shot goes where the robot is pointing.
      */
-    public double bearingToGoal() {
-        double dx = GOAL_X_INCHES - xInches;
-        double dy = GOAL_Y_INCHES - yInches;
-        return wrap(Math.toDegrees(Math.atan2(dx, dy)) - headingDeg);
+    public double bearingTo(double x, double y) {
+        return wrap(Math.toDegrees(Math.atan2(x - xInches, y - yInches)) - headingDeg);
     }
 
     private static double approach(double current, double target, double maxStep) {

@@ -146,6 +146,20 @@ public final class GamepadHarness {
         if (guiView != null) System.exit(0);
     }
 
+    /**
+     * A fresh stand-in robot on the field's start spot, its Pinpoint zeroed
+     * there and its camera told where it is - the state the OpMode's init()
+     * should find, as on the real field.
+     */
+    private static DesktopRobot placedRobot(RobotSim sim, FieldSim field) {
+        DesktopRobot robot = new DesktopRobot();
+        field.placeRobot(sim);
+        robot.resetOdometryOrigin(sim);
+        robot.updateOdometry(sim);
+        robot.vision.update(sim, field);
+        return robot;
+    }
+
     /** A TeamCode OpMode by simple class name, or any OpMode by full name. */
     static Class<? extends OpMode> findOpMode(String name) {
         String className = name.contains(".") ? name : "org.firstinspires.ftc.teamcode." + name;
@@ -290,15 +304,18 @@ public final class GamepadHarness {
         }
 
         DriverStation ds = new DriverStation();
-        DesktopRobot robot = new DesktopRobot();
-        OpModeRunner runner = new OpModeRunner(type, robot, ds);
         RobotSim sim = new RobotSim();
+        FieldSim field = new FieldSim();
+        DesktopRobot robot = placedRobot(sim, field);
+        // Placed before the OpMode is built: its init() reads the Pinpoint and camera.
+        OpModeRunner runner = new OpModeRunner(type, robot, ds);
         BallPath ball = new BallPath();
 
         System.out.println();
         System.out.println("Window open, running " + runner.name() + " on stand-in motors.");
         System.out.println("Choose options on the pad, then START (or S) runs it.");
         System.out.println("R restarts. O, or clicking the OpMode name, picks another OpMode.");
+        System.out.println("P, or clicking the field, in INIT moves the robot to a legal start spot.");
         System.out.println("BACK + START on the pad, or closing the window, quits.");
 
         view.setOpModes(OpModeCatalog.discover());
@@ -345,18 +362,34 @@ public final class GamepadHarness {
 
                 if (restart) {
                     runner.close();
-                    robot = new DesktopRobot();
-                    runner = new OpModeRunner(type, robot, ds);
                     sim.reset();
+                    field.reset(field.start());
+                    robot = placedRobot(sim, field);
+                    runner = new OpModeRunner(type, robot, ds);
                     ball.reset();
                     view.clearTrail();
                 }
 
+                // P: the next legal start spot, with the field staged afresh.
+                if (view.consumeStartSpotRequest() && runner.phase() == OpModeRunner.Phase.INIT) {
+                    field.reset(field.nextPreset());
+                    field.placeRobot(sim);
+                    robot.resetOdometryOrigin(sim);
+                    robot.vision.update(sim, field);
+                    ball.reset();
+                    view.clearTrail();
+                    System.out.println("Start spot: " + field.start().label + ".");
+                }
+
+                // A click places the robot at the nearest legal start (G304) to it.
                 Point2D.Double requestedStart = view.consumeStartingPositionRequest();
                 if (requestedStart != null && runner.phase() == OpModeRunner.Phase.INIT) {
-                    sim.setStartingPosition(requestedStart.x, requestedStart.y);
+                    field.setStart(BiobuzzField.nearestLegalStart(requestedStart.x, requestedStart.y));
+                    field.placeRobot(sim);
                     robot.resetOdometryOrigin(sim);
+                    robot.vision.update(sim, field);
                     view.clearTrail();
+                    System.out.println("Start spot: " + field.start().label + ".");
                 }
 
                 if (startPressed && !restart) runner.start();
@@ -369,12 +402,17 @@ public final class GamepadHarness {
                 if (dt > 0.1) dt = 0.1;
 
                 GamePadReadings readings = runner.cycle(dt);
-                ball.step(robot.intakeFlow(), robot.rampFlow(), robot.flywheelSpeed(), dt);
+                // Balls come from what the robot holds, and go onto the field.
+                ball.step(robot.intakeFlow(), robot.rampFlow(), robot.flywheelSpeed(), dt, field::takeForPath);
+                if (ball.takeShot()) field.launch(sim, robot.flywheelSpeed());
+                if (ball.takeSpit()) field.spit(sim);
                 sim.step(robot.frontLeft.power, robot.frontRight.power,
                         robot.rearLeft.power, robot.rearRight.power, dt);
+                field.step(sim, robot.intakeFlow(), dt);
                 robot.updateOdometry(sim);
+                robot.vision.update(sim, field);
 
-                view.update(readings, robot, sim, ball, robot.telemetry.visible(), runner);
+                view.update(readings, robot, sim, ball, field, robot.telemetry.visible(), runner);
                 sleep();
             }
         } finally {

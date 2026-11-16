@@ -111,10 +111,16 @@ public class RobotSimTest {
     }
 
     @Test
-    public void theGoalBearingFollowsTheChassis() {
-        double before = sim.bearingToGoal();
+    public void theBearingFollowsTheChassis() {
+        double before = sim.bearingTo(20, 130);
         sim.headingDeg = 30;
 
-        assertEquals(before - 30, sim.bearingToGoal(), EPS);
+        assertEquals(before - 30, sim.bearingTo(20, 130), EPS);
+    }
+
+    @Test
+    public void aPointStraightAheadIsZeroAndOneToTheRightIsNinety() {
+        assertEquals(0.0, sim.bearingTo(sim.xInches, sim.yInches + 10), EPS);
+        assertEquals(90.0, sim.bearingTo(sim.xInches + 10, sim.yInches), EPS);
     }
 }

@@ -46,8 +46,11 @@ public final class DesktopRobot {
     /** Pinpoint stand-in whose readings follow the field simulator. */
     public final GoBildaPinpointDriver pinpoint = Mockito.mock(GoBildaPinpointDriver.class);
 
-    /** The webcam's configuration entry; what it sees is {@link SimCamera}. */
+    /** The webcam's configuration entry; what it sees is {@link #vision}. */
     public final WebcamName webcam = Mockito.mock(WebcamName.class);
+
+    /** What the webcam sees, once something tells it where the robot is ({@link SimVision#update}). */
+    public final SimVision vision = new SimVision();
     private double odometryXInches;
     private double odometryYInches;
     private double odometryHeadingDegrees;

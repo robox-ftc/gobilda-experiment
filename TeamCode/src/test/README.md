@@ -63,17 +63,48 @@ needs something the stand-in robot lacks (such as the turret motor) shows as
 crashed, with the line that asked for it.
 
 There is a `Webcam 1`, but OpenCV cannot run on the PC, so `SimCamera` stands in
-for the AprilTag processor: camera OpModes load and run, and never see a tag.
-Anything that aims at a tag (Teleop-2027-Intel's A, Y and left bumper
-centering) does nothing here. The `VisionPortal` itself is null, since its
-class cannot even be loaded off the robot.
+for the AprilTag processor, and `SimVision` works out what it would report from
+the robot's pose: one `AprilTagClusterDetection` per CELL in view, posed at the
+CELL opening the way the SDK's BIOBUZZ library defines it, with `ftcPose`
+converted by the SDK's own formula. The camera sits where the OpMode's
+`setCameraPose` puts it, read the SDK's way (yaw/pitch/roll 0 looks straight up,
+pitch -90 looks forward); its view is drawn on the field and tags it sees turn
+green. Field of view and range are assumptions (`SimVision`). The `VisionPortal`
+itself is null, since its class cannot even be loaded off the robot.
 
 To start on a particular OpMode, pass its class name:
 `gradlew :TeamCode:gamepadGui --args="--gui --opmode=SomeOpMode"`.
 
-The window shows the robot dead reckoned on a 12 ft field, the ball path
+The window shows the robot dead reckoned on the BIOBUZZ field, the ball path
 (intake, ramp, flywheels), the pad, the motor powers, and the telemetry a Driver
 Station would show. A crash is shown with the line in the OpMode that threw.
+
+The field (`BiobuzzField`, `FieldSim`) follows Competition Manual Sections 9-11,
+the Event Field Setup Guide and the SDK's tag library:
+
+- It is staged as in a MATCH: 4 POLLEN in each FLOWER and GARDEN, 3 NECTAR in
+  each upward CELL, and 4 POLLEN pre-loaded in the robot.
+- The robot starts lined up with red's HIVE against the audience wall, facing
+  the CELL that starts up. **P** in INIT steps through other ready-made starts
+  (blue facing its HIVE, and red/blue on the audience and far walls). Clicking
+  the field in INIT puts the robot at the nearest *legal* start (G304) to the
+  click, on that side of the field: backed onto a wall, out of the LOADING
+  ZONES, clear of the FLOWERS.
+- The LOADING ZONES are labelled PARK, and the field shows LEAVE (off the wall)
+  and PARK (partly in its own LOADING ZONE) live, as Section 10.5.4 scores them.
+- The intake is at the back. With it running, a ball at the mouth is taken in
+  (4 at most, G407); POLLEN can be pulled from a FLOWER's bottom. Anything else
+  the robot touches is pushed. Reversing the intake drops the ball behind.
+- A LAUNCH goes into the upward CELL the robot points at, if the flywheels are
+  fast enough and the CELL is in range; otherwise it lands on the floor ahead.
+  Those thresholds are guesses (`FieldSim`).
+- A HIVE tips when its upward CELL holds 3 NECTAR + 3 POLLEN or 8 POLLEN (the
+  setup guide's calibration table), and what was in it spills on the floor.
+- The frame's two base bars and the FLOWERS stop the robot; the HIVES are above
+  a robot within the 29 in. sizing volume, so it drives under them.
+
+Not modelled: human players, scoring, FLOWER ownership, other robots, ball
+height. Balls and robot are a picture, not physics.
 
 **The position is dead reckoning.** `RobotSim` treats wheel power as wheel speed
 and integrates it: no mass, no slip, and none of its speeds were measured on the

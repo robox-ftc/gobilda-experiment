@@ -67,10 +67,20 @@ public final class RobotView {
      * the launcher is fixed, so that is where a shot goes.
      */
     private static final class Shot {
-        final double x, y, bearing;
+        final double x, y, landX, landY;
+        final boolean scored;
         double age;
-        Shot(double x, double y, double bearing) {
-            this.x = x; this.y = y; this.bearing = bearing;
+        Shot(double x, double y, double landX, double landY, boolean scored) {
+            this.x = x; this.y = y; this.landX = landX; this.landY = landY; this.scored = scored;
+        }
+    }
+
+    /** A ball on the floor, as drawn. */
+    private static final class BallMark {
+        final double x, y, r;
+        final BiobuzzField.BallType type;
+        BallMark(double x, double y, double r, BiobuzzField.BallType type) {
+            this.x = x; this.y = y; this.r = r; this.type = type;
         }
     }
 
@@ -108,6 +118,7 @@ public final class RobotView {
             new Shortcut(KeyEvent.VK_S, "S", "start", () -> startRequested = true),
             new Shortcut(KeyEvent.VK_R, "R", "restart", () -> resetRequested = true),
             new Shortcut(KeyEvent.VK_O, "O", "opmode", () -> showOpModeMenu(null)),
+            new Shortcut(KeyEvent.VK_P, "P", "start spot", () -> startSpotRequested = true),
             new Shortcut(KeyEvent.VK_ESCAPE, "Esc", "quit", () -> open = false));
 
     private static final Color BG = new Color(0x1E1F22);
@@ -122,6 +133,10 @@ public final class RobotView {
     private static final Color ROBOT = new Color(0x4C9AFF);
     private static final Color ACCENT = new Color(0xE0A83C);
     private static final Color WARN = new Color(0xE0625A);
+    private static final Color RED_SIDE = new Color(0xE0625A);
+    private static final Color BLUE_SIDE = new Color(0x4C7DFF);
+    private static final Color FLOWER = new Color(0xB89A3E);
+    private static final Color POLLEN = new Color(0xF2D648);
 
     private static final Font MONO = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final Font MONO_BOLD = new Font(Font.MONOSPACED, Font.BOLD, 12);
@@ -142,6 +157,20 @@ public final class RobotView {
         double ballProgress;
         int ballStage = -1;
         double goalBearing;
+        String goal = "";
+        boolean hasField;
+        java.util.EnumMap<BiobuzzField.Alliance, BiobuzzField.End> up =
+                new java.util.EnumMap<BiobuzzField.Alliance, BiobuzzField.End>(BiobuzzField.Alliance.class);
+        java.util.Map<String, String> cellContents = new java.util.HashMap<String, String>();
+        List<BallMark> balls = new ArrayList<BallMark>();
+        int[] flowerPollen = new int[BiobuzzField.FLOWERS.size()];
+        int carried = -1;
+        java.util.Set<Integer> visibleTags = java.util.Collections.emptySet();
+        BiobuzzField.V3 cameraEye, cameraAxis;
+        String start = "";
+        int redTips, blueTips;
+        BiobuzzField.Alliance alliance = BiobuzzField.Alliance.RED;
+        boolean parked, offWall;
         boolean firing;
         double flow;
         String intakeState = "IDLE";
@@ -159,6 +188,7 @@ public final class RobotView {
     private volatile boolean open = true;
     private volatile boolean resetRequested;
     private volatile boolean startRequested;
+    private volatile boolean startSpotRequested;
     private volatile boolean canSetStartingPosition;
     private volatile Point2D.Double requestedStartingPosition;
     private volatile List<OpModeCatalog.Entry> opModes = new ArrayList<OpModeCatalog.Entry>();
@@ -348,6 +378,13 @@ public final class RobotView {
         return menu;
     }
 
+    /** True once, if the operator asked for P: the next legal start spot. */
+    public boolean consumeStartSpotRequest() {
+        if (!startSpotRequested) return false;
+        startSpotRequested = false;
+        return true;
+    }
+
     /** True once, if the operator asked for S: the Driver Station's START. */
     public boolean consumeStartRequest() {
         if (!startRequested) return false;
@@ -389,6 +426,12 @@ public final class RobotView {
     /** Called from the harness loop; safe to call off the event thread. */
     public void update(GamePadReadings pad, DesktopRobot robot, RobotSim sim,
                        BallPath ball, List<String> newTelemetry, OpModeRunner runner) {
+        update(pad, robot, sim, ball, null, newTelemetry, runner);
+    }
+
+    /** As above, drawing {@code field}'s balls, HIVES and start spot as well. */
+    public void update(GamePadReadings pad, DesktopRobot robot, RobotSim sim,
+                       BallPath ball, FieldSim field, List<String> newTelemetry, OpModeRunner runner) {
         Snapshot s = new Snapshot();
         canSetStartingPosition = runner != null
                 && runner.phase() == OpModeRunner.Phase.INIT && runner.failure() == null;
@@ -414,7 +457,45 @@ public final class RobotView {
         s.wheelsUp = s.flywheel > IDLE && s.wheelSpeed >= s.flywheel * WHEELS_UP;
         s.rpmL = robot.leftWheelRPM();
         s.rpmCommanded = robot.commandedWheelRPM();
-        s.goalBearing = sim.bearingToGoal();
+        for (BiobuzzField.Alliance a : BiobuzzField.Alliance.values()) {
+            s.up.put(a, field != null ? field.up(a) : BiobuzzField.upAtStart(a));
+        }
+        // The aim readout: the nearest upward CELL's opening.
+        BiobuzzField.Alliance aim = null;
+        double nearest = Double.MAX_VALUE;
+        for (BiobuzzField.Alliance a : BiobuzzField.Alliance.values()) {
+            BiobuzzField.V3 o = BiobuzzField.opening(a, s.up.get(a), s.up.get(a));
+            double d = Math.hypot(o.x - sim.xInches, o.y - sim.yInches);
+            if (d < nearest) { nearest = d; aim = a; }
+        }
+        BiobuzzField.V3 target = BiobuzzField.opening(aim, s.up.get(aim), s.up.get(aim));
+        s.goal = aim + " " + s.up.get(aim) + " CELL";
+        s.goalBearing = sim.bearingTo(target.x, target.y);
+        if (field != null) {
+            s.hasField = true;
+            for (FieldSim.Ball b : field.balls()) s.balls.add(new BallMark(b.x, b.y, b.type.radius, b.type));
+            for (int i = 0; i < s.flowerPollen.length; i++) s.flowerPollen[i] = field.flowerPollen(i);
+            for (BiobuzzField.Alliance a : BiobuzzField.Alliance.values()) {
+                for (BiobuzzField.End e : BiobuzzField.End.values()) {
+                    int nectar = 0, pollen = 0;
+                    for (BiobuzzField.BallType t : field.cell(a, e)) {
+                        if (t == BiobuzzField.BallType.POLLEN) pollen++; else nectar++;
+                    }
+                    s.cellContents.put(a + " " + e, nectar + pollen == 0 ? "" : nectar + "N " + pollen + "P");
+                }
+            }
+            s.carried = field.carried();
+            s.start = field.start().label;
+            s.alliance = field.start().alliance;
+            s.parked = field.parked(sim);
+            s.offWall = FieldSim.offWall(sim);
+            s.redTips = field.tips(BiobuzzField.Alliance.RED);
+            s.blueTips = field.tips(BiobuzzField.Alliance.BLUE);
+        }
+        s.visibleTags = robot.vision.visibleTags();
+        BiobuzzField.V3[] cam = robot.vision.cameraFrame();
+        s.cameraEye = cam[3];
+        s.cameraAxis = cam[2];
         s.firing = s.ramp > IDLE;
         s.pad = pad;
 
@@ -443,8 +524,15 @@ public final class RobotView {
 
         // A shot is a ball leaving, not a ramp turning. Pressing fire with an
         // empty path now draws nothing, which is what the robot would do.
-        if (ball.takeShot()) {
-            shots.add(new Shot(sim.xInches, sim.yInches, sim.headingDeg));
+        if (field != null) {
+            for (FieldSim.Shot shot : field.drainShots()) {
+                shots.add(new Shot(shot.x, shot.y, shot.landX, shot.landY, shot.cell != null));
+            }
+        } else if (ball.takeShot()) {
+            // No field: draw a short ray along the heading.
+            double h = Math.toRadians(sim.headingDeg);
+            shots.add(new Shot(sim.xInches, sim.yInches,
+                    sim.xInches + Math.sin(h) * 34, sim.yInches + Math.cos(h) * 34, false));
         }
         for (int i = shots.size() - 1; i >= 0; i--) {
             shots.get(i).age += dt;
@@ -572,6 +660,8 @@ public final class RobotView {
                 g.drawLine(x + 1, y + p, x + size - 1, y + p);
             }
 
+            drawBiobuzz(g, s, x, y, size, scale);
+
             // Trail, oldest faintest.
             int n = s.trail.size();
             int i = 0;
@@ -588,34 +678,21 @@ public final class RobotView {
                 i++;
             }
 
-            // Shots: where a ball left, along the heading at that instant. A
-            // marker of an event, not a ball trajectory.
+            // Shots: from the launcher to where the ball went - into a CELL
+            // (green) or onto the floor (amber). Not a trajectory.
             for (Shot shot : s.shots) {
                 double fade = 1 - shot.age / SHOT_FADE_SECONDS;
                 int alpha = (int) (210 * Math.max(0, fade));
-                double b = Math.toRadians(shot.bearing);
-                double len = 34 * scale;
                 int x0 = sx(x, shot.x, scale);
                 int y0 = sy(y, size, shot.y, scale);
-                int x1 = x0 + (int) (Math.sin(b) * len);
-                int y1 = y0 - (int) (Math.cos(b) * len);
-                g.setColor(new Color(ACCENT.getRed(), ACCENT.getGreen(), ACCENT.getBlue(), alpha));
+                int x1 = sx(x, shot.landX, scale);
+                int y1 = sy(y, size, shot.landY, scale);
+                Color c = shot.scored ? FWD : ACCENT;
+                g.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha));
                 g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g.drawLine(x0, y0, x1, y1);
                 g.fillOval(x1 - 4, y1 - 4, 8, 8);
             }
-
-            // The goal. The launcher is fixed, so aiming is steering the robot.
-            int gx = sx(x, RobotSim.GOAL_X_INCHES, scale);
-            int gy = sy(y, size, RobotSim.GOAL_Y_INCHES, scale);
-            g.setColor(ACCENT);
-            g.setStroke(new BasicStroke(2f));
-            g.draw(new Ellipse2D.Double(gx - 9, gy - 9, 18, 18));
-            g.drawLine(gx - 3, gy, gx + 3, gy);
-            g.drawLine(gx, gy - 3, gx, gy + 3);
-            g.setFont(LABEL);
-            g.setColor(DIM);
-            g.drawString("GOAL", gx + 13, gy + 4);
 
             // The robot itself.
             int cx = sx(x, s.x, scale);
@@ -638,6 +715,19 @@ public final class RobotView {
             g.setColor(ROBOT);
             g.setStroke(new BasicStroke(2f));
             g.drawRect(-side / 2, -side / 2, side, side);
+
+            // The intake mouth, at the back (FieldSim takes balls in here).
+            int mouth = (int) Math.round(2 * FieldSim.MOUTH_HALF_WIDTH * scale);
+            g.setColor(s.intake > IDLE ? FWD : s.intake < -IDLE ? REV : OFF);
+            g.setStroke(new BasicStroke(4f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
+            g.drawLine(-mouth / 2, side / 2, mouth / 2, side / 2);
+            if (s.carried >= 0) {
+                // Balls held, as dots inside the chassis.
+                g.setColor(POLLEN);
+                for (int k = 0; k < s.carried; k++) {
+                    g.fillOval(-side / 4 + (k % 2) * side / 4 - 3, side / 8 + (k / 2) * 8 - 3, 6, 6);
+                }
+            }
 
             /*
              * The four wheels, where they sit on the chassis.
@@ -676,10 +766,15 @@ public final class RobotView {
             g.setStroke(new BasicStroke(1f));
             g.drawRoundRect(x, y, size, size, 8, 8);
 
+            // The readouts below sit at the bottom of the field, or at the top
+            // while the robot is down there (where the audience-wall starts are).
+            boolean infoAtTop = s.y < BiobuzzField.FIELD_INCHES * 0.4;
+            int legendY = infoAtTop ? y + 124 : y + size - 24;
+
             g.setFont(LABEL);
             g.setColor(DIM);
-            g.drawString("FIELD  12 ft, one square is one tile   -   wheels show which way each one turns",
-                    x + 10, y + size - 10);
+            g.drawString("BIOBUZZ FIELD  12 ft, 24 in. tiles   -   wheels show which way each one turns",
+                    x + 10, legendY);
             // What the OpMode is doing, as the Driver Station would say it.
             int below = y + 38;
             if (!s.phase.isEmpty()) {
@@ -704,8 +799,205 @@ public final class RobotView {
             g.setFont(LABEL);
             g.setColor(ACCENT);
             g.drawString(String.format(Locale.ROOT,
-                    "GOAL %+.0f deg off the nose  -  the launcher is fixed, so steer to aim",
-                    s.goalBearing), x + 10, y + size - 26);
+                    "%s %+.0f deg off the nose  -  the launcher is fixed, so steer to aim",
+                    s.goal, s.goalBearing), x + 10, legendY - 16);
+            if (s.hasField) {
+                g.setColor(DIM);
+                g.drawString(String.format(Locale.ROOT,
+                        "START %s (P or click in INIT)   HOLDING %d   TIPS red %d blue %d",
+                        s.start, s.carried, s.redTips, s.blueTips), x + 10, legendY - 32);
+                // Section 10.5.4, live: LEAVE is off the wall, PARK is in its LOADING ZONE.
+                g.setColor(s.offWall ? FWD : DIM);
+                g.drawString(s.offWall ? "LEAVE yes" : "LEAVE no", x + 10, legendY - 48);
+                g.setColor(s.parked ? FWD : DIM);
+                g.drawString(s.parked ? "PARK yes" : "PARK no", x + 90, legendY - 48);
+            }
+        }
+
+        private Color allianceColor(BiobuzzField.Alliance alliance, int alpha) {
+            Color c = alliance == BiobuzzField.Alliance.RED ? RED_SIDE : BLUE_SIDE;
+            return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
+        }
+
+        private void fillZone(Graphics2D g, java.awt.geom.Rectangle2D.Double r, Color fill,
+                              int x, int y, int size, double scale) {
+            int left = sx(x, r.x, scale);
+            int top = sy(y, size, r.y + r.height, scale);
+            int w = Math.max(2, (int) Math.round(r.width * scale));
+            int h = Math.max(2, (int) Math.round(r.height * scale));
+            g.setColor(fill);
+            g.fillRect(left, top, w, h);
+        }
+
+        /**
+         * The BIOBUZZ field from {@link BiobuzzField} and, when there is one,
+         * {@link FieldSim}: alliance walls, TILE labels, LOADING ZONES, GARDENS,
+         * FLOWERS (with the POLLEN left in each), loose balls, the frame's base
+         * bars, the HIVES at their current tilt with what is in each upward
+         * CELL, every AprilTag (green when the camera sees it), and which way
+         * the camera looks.
+         */
+        private void drawBiobuzz(Graphics2D g, Snapshot s, int x, int y, int size, double scale) {
+            // Alliance walls: red on the left, blue on the right (Section 9.5).
+            g.setStroke(new BasicStroke(4f));
+            g.setColor(allianceColor(BiobuzzField.Alliance.RED, 200));
+            g.drawLine(x + 2, y + 2, x + 2, y + size - 2);
+            g.setColor(allianceColor(BiobuzzField.Alliance.BLUE, 200));
+            g.drawLine(x + size - 2, y + 2, x + size - 2, y + size - 2);
+
+            // TILE labels, A-F left to right and 1-6 from the audience (Figure 9-5).
+            g.setFont(LABEL);
+            g.setColor(new Color(DIM.getRed(), DIM.getGreen(), DIM.getBlue(), 150));
+            double tile = BiobuzzField.TILE_INCHES;
+            for (int i = 0; i < 6; i++) {
+                g.drawString(String.valueOf((char) ('A' + i)),
+                        sx(x, (i + 0.5) * tile, scale) - 3, y + size - 5);
+                g.drawString(String.valueOf(i + 1), x + 6, sy(y, size, (i + 0.5) * tile, scale) + 4);
+            }
+            g.drawString("AUDIENCE", x + size / 2 - 26, y + size - 5);
+
+            fillZone(g, BiobuzzField.RED_LOADING_ZONE,
+                    allianceColor(BiobuzzField.Alliance.RED, 70), x, y, size, scale);
+            fillZone(g, BiobuzzField.BLUE_LOADING_ZONE,
+                    allianceColor(BiobuzzField.Alliance.BLUE, 70), x, y, size, scale);
+            drawParkZone(g, s, BiobuzzField.Alliance.RED, BiobuzzField.RED_LOADING_ZONE, x, y, size, scale);
+            drawParkZone(g, s, BiobuzzField.Alliance.BLUE, BiobuzzField.BLUE_LOADING_ZONE, x, y, size, scale);
+            fillZone(g, BiobuzzField.RED_GARDEN,
+                    allianceColor(BiobuzzField.Alliance.RED, 200), x, y, size, scale);
+            fillZone(g, BiobuzzField.BLUE_GARDEN,
+                    allianceColor(BiobuzzField.Alliance.BLUE, 200), x, y, size, scale);
+
+            // FLOWERS: their base, with the POLLEN still inside.
+            double flowerR = Math.max(4, BiobuzzField.FLOWER_RADIUS * scale);
+            for (int i = 0; i < BiobuzzField.FLOWERS.size(); i++) {
+                Point2D.Double f = BiobuzzField.FLOWERS.get(i);
+                int fx = sx(x, f.x, scale);
+                int fy = sy(y, size, f.y, scale);
+                g.setColor(FLOWER);
+                g.fill(new Ellipse2D.Double(fx - flowerR, fy - flowerR, 2 * flowerR, 2 * flowerR));
+                if (s.hasField) {
+                    g.setFont(LABEL);
+                    g.setColor(TEXT);
+                    int lx = f.x <= 0 ? fx + (int) flowerR + 2 : f.x >= BiobuzzField.FIELD_INCHES
+                            ? fx - (int) flowerR - 9 : fx - 3;
+                    int ly = f.y <= 0 ? fy - (int) flowerR - 3 : f.y >= BiobuzzField.FIELD_INCHES
+                            ? fy + (int) flowerR + 11 : fy + 4;
+                    g.drawString(String.valueOf(s.flowerPollen[i]), lx, ly);
+                }
+            }
+
+            // Loose SCORING ELEMENTS.
+            for (BallMark b : s.balls) {
+                int bx = sx(x, b.x, scale);
+                int by = sy(y, size, b.y, scale);
+                double r = Math.max(2.5, b.r * scale);
+                g.setColor(ballColor(b.type));
+                g.fill(new Ellipse2D.Double(bx - r, by - r, 2 * r, 2 * r));
+            }
+
+            // The frame: its two base bars are solid; the rest is overhead.
+            g.setColor(new Color(0x9AA0A6));
+            for (java.awt.geom.Rectangle2D.Double bar : BiobuzzField.FRAME_BARS) {
+                fillZone(g, bar, new Color(0x9AA0A6), x, y, size, scale);
+            }
+            double top = BiobuzzField.CENTER + BiobuzzField.FRAME_DEPTH / 2;
+            g.setColor(EDGE);
+            g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
+                    10f, new float[] {4f, 4f}, 0f));
+            g.drawRect(sx(x, BiobuzzField.CENTER - BiobuzzField.FRAME_WIDTH / 2, scale), sy(y, size, top, scale),
+                    (int) Math.round(BiobuzzField.FRAME_WIDTH * scale),
+                    (int) Math.round(BiobuzzField.FRAME_DEPTH * scale));
+
+            // HIVES: each CELL's outline at the current tilt; the upward one
+            // filled, with what is in it.
+            for (BiobuzzField.Alliance a : BiobuzzField.Alliance.values()) {
+                BiobuzzField.End upEnd = s.up.get(a);
+                for (BiobuzzField.End e : BiobuzzField.End.values()) {
+                    double[] span = BiobuzzField.cellSpanY(a, e, upEnd);
+                    int w = (int) Math.round(BiobuzzField.CELL_WIDTH * scale);
+                    int left = sx(x, BiobuzzField.hiveX(a) - BiobuzzField.CELL_WIDTH / 2, scale);
+                    int topY = sy(y, size, span[1], scale);
+                    int h = Math.max(4, (int) Math.round((span[1] - span[0]) * scale));
+                    boolean isUp = e == upEnd;
+                    g.setColor(allianceColor(a, isUp ? 110 : 35));
+                    g.fillRoundRect(left, topY, w, h, 6, 6);
+                    g.setColor(allianceColor(a, 220));
+                    g.setStroke(new BasicStroke(s.goal.equals(a + " " + e + " CELL") ? 3f : 1.5f));
+                    g.drawRoundRect(left, topY, w, h, 6, 6);
+                    if (isUp) {
+                        g.setFont(LABEL);
+                        String in = s.cellContents.get(a + " " + e);
+                        String label = in == null || in.isEmpty() ? "UP" : "UP " + in;
+                        g.drawString(label, left + w / 2 - g.getFontMetrics().stringWidth(label) / 2,
+                                topY + h / 2 + 4);
+                    }
+
+                    // The cluster's four tags, on the CELL's underside.
+                    int first = BiobuzzField.firstTagId(a, e);
+                    for (int i = 0; i < 4; i++) {
+                        BiobuzzField.V3 t = BiobuzzField.tagCenter(a, e, upEnd, i);
+                        int tx = sx(x, t.x, scale);
+                        int ty = sy(y, size, t.y, scale);
+                        int ts = Math.max(3, (int) Math.round(BiobuzzField.TAG_SIZE * scale * 0.8));
+                        boolean seen = s.visibleTags.contains(first + i);
+                        g.setColor(seen ? FWD : TEXT);
+                        g.fillRect(tx - ts / 2, ty - ts / 2, ts, ts);
+                        g.setColor(BG);
+                        g.setStroke(new BasicStroke(1f));
+                        g.drawRect(tx - ts / 2, ty - ts / 2, ts, ts);
+                    }
+                }
+            }
+
+            // The camera: where it is, and the way it looks, seen from above.
+            if (s.cameraEye != null) {
+                int ex = sx(x, s.cameraEye.x, scale);
+                int ey = sy(y, size, s.cameraEye.y, scale);
+                double hx = s.cameraAxis.x, hy = s.cameraAxis.y;
+                double flat = Math.hypot(hx, hy);
+                g.setColor(new Color(FWD.getRed(), FWD.getGreen(), FWD.getBlue(), 160));
+                g.setStroke(new BasicStroke(1.5f));
+                if (flat > 0.15) {
+                    double az = Math.atan2(hx, hy);
+                    double halfFov = Math.toRadians(SimVision.HFOV_DEG / 2);
+                    double len = 30 * scale;
+                    for (double side : new double[] {-1, 1}) {
+                        double ang = az + side * halfFov;
+                        g.drawLine(ex, ey, ex + (int) (Math.sin(ang) * len), ey - (int) (Math.cos(ang) * len));
+                    }
+                } else {
+                    g.drawOval(ex - 6, ey - 6, 12, 12);
+                }
+                g.fillOval(ex - 3, ey - 3, 6, 6);
+            }
+        }
+
+        /**
+         * A LOADING ZONE, labelled with what it scores: PARK (Section 10.5.4).
+         * The robot's own ALLIANCE's zone is outlined, green while it counts.
+         */
+        private void drawParkZone(Graphics2D g, Snapshot s, BiobuzzField.Alliance a,
+                                  java.awt.geom.Rectangle2D.Double zone, int x, int y, int size, double scale) {
+            int left = sx(x, zone.x, scale);
+            int top = sy(y, size, zone.y + zone.height, scale);
+            int w = (int) Math.round(zone.width * scale), h = (int) Math.round(zone.height * scale);
+            if (s.hasField && a == s.alliance) {
+                g.setColor(s.parked ? FWD : allianceColor(a, 220));
+                g.setStroke(new BasicStroke(s.parked ? 3f : 1.5f));
+                g.drawRect(left, top, w, h);
+            }
+            g.setFont(LABEL);
+            g.setColor(TEXT);
+            String label = "PARK";
+            g.drawString(label, left + w / 2 - g.getFontMetrics().stringWidth(label) / 2, top + h / 2 + 4);
+        }
+
+        private Color ballColor(BiobuzzField.BallType type) {
+            switch (type) {
+                case RED_NECTAR: return RED_SIDE;
+                case BLUE_NECTAR: return BLUE_SIDE;
+                default: return POLLEN;
+            }
         }
 
         /**

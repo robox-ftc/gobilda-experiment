@@ -15,8 +15,10 @@ package org.firstinspires.ftc.teamcode.testing;
  * that the ramp will push it at wheels that are not turning, that reversing spits
  * it back out, and that firing with an empty path does nothing.
  *
- * <p>A ball is assumed to be available whenever the intake runs forward, which
- * on a real field it very much is not.
+ * <p>On its own, a ball is assumed to be available whenever the intake runs
+ * forward. Given a supply ({@link #step(double, double, double, double,
+ * BooleanSupplier)}), as {@link FieldSim} gives it, a ball only enters the
+ * path when the robot is holding one.
  */
 public final class BallPath {
 
@@ -39,10 +41,14 @@ public final class BallPath {
     /** Set for the one step in which a ball left. Cleared by {@link #takeShot}. */
     private boolean shotPending;
 
+    /** Set for the one step in which a ball was spat back out of the intake. */
+    private boolean spitPending;
+
     public void reset() {
         hasBall = false;
         progress = 0;
         shotPending = false;
+        spitPending = false;
     }
 
     /**
@@ -53,13 +59,32 @@ public final class BallPath {
      *     a ball can arrive at wheels that are not turning, and stays there.
      */
     public void step(double intake, double ramp, double flywheels, double dtSec) {
+        step(intake, ramp, flywheels, dtSec, () -> true, false);
+    }
+
+    /**
+     * As {@link #step(double, double, double, double)}, but a ball enters the
+     * path only if {@code takeBall} hands one over - the robot is holding it.
+     * A held ball is already inside the robot, so the ramp alone can feed it
+     * to the flywheels; the intake is only needed to start one from the mouth.
+     */
+    public void step(double intake, double ramp, double flywheels, double dtSec,
+                     java.util.function.BooleanSupplier takeBall) {
+        step(intake, ramp, flywheels, dtSec, takeBall, true);
+    }
+
+    private void step(double intake, double ramp, double flywheels, double dtSec,
+                      java.util.function.BooleanSupplier takeBall, boolean rampFeedsHeld) {
         if (dtSec <= 0) return;
 
         if (!hasBall) {
             // Something to pick up, whenever the intake is running forward.
-            if (intake > IDLE) {
+            if (intake > IDLE && takeBall.getAsBoolean()) {
                 hasBall = true;
                 progress = 0;
+            } else if (rampFeedsHeld && ramp > IDLE && takeBall.getAsBoolean()) {
+                hasBall = true;
+                progress = INTAKE_END;
             }
             return;
         }
@@ -82,6 +107,7 @@ public final class BallPath {
             // Spat back out of the intake.
             hasBall = false;
             progress = 0;
+            spitPending = true;
         }
     }
 
@@ -93,6 +119,13 @@ public final class BallPath {
     public int stage() {
         if (!hasBall) return -1;
         return progress < INTAKE_END ? 0 : 1;
+    }
+
+    /** True once per ball spat back out of the intake, and only once. */
+    public boolean takeSpit() {
+        if (!spitPending) return false;
+        spitPending = false;
+        return true;
     }
 
     /** True once per ball that made it out, and only once. */
