@@ -125,9 +125,21 @@ public final class GamepadHarness {
         } finally {
             // The window ignores its close button until the harness loop disposes
             // it, so a failure before that loop must not leave it open.
-            if (guiView != null) guiView.close();
+            if (guiView != null) {
+                guiView.close();
+                // Swing disposes it on its own thread, and on macOS that needs
+                // AppKit on this one, so keep the event loop turning meanwhile.
+                long deadline = System.nanoTime() + 2_000_000_000L;
+                while (!guiView.isDisposed() && System.nanoTime() < deadline) {
+                    glfwPollEvents();
+                    sleep();
+                }
+            }
             glfwTerminate();
         }
+        // Swing's threads are not daemons; if one is still stuck in AppKit, the
+        // JVM would wait for it forever after main returns.
+        if (guiView != null) System.exit(0);
     }
 
     /** A TeamCode OpMode by simple class name, or any OpMode by full name. */

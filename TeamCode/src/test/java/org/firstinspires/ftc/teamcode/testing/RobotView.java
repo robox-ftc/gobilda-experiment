@@ -160,7 +160,8 @@ public final class RobotView {
     private double flowPhase;
     private long lastNanos;
 
-    private JFrame frame;
+    private volatile JFrame frame;
+    private volatile boolean disposed;
     private Panel panel;
 
     /** @return false when there is no display to draw on, such as on a build server. */
@@ -229,18 +230,34 @@ public final class RobotView {
         inputStatus = status == null ? "" : status;
     }
 
+    /**
+     * Asks Swing to dispose the window and returns at once. Safe to call twice.
+     *
+     * <p>It must not block. On macOS the harness runs on AppKit's first thread,
+     * and {@code Window.dispose()} waits there for Swing's thread, which can
+     * itself be waiting on AppKit (a key event asks it for the keyboard
+     * locale): a deadlock. The caller keeps pumping AppKit with
+     * {@code glfwPollEvents()} until {@link #isDisposed()}.
+     */
     public void close() {
         open = false;
-        if (frame == null) return;
-        String osName = System.getProperty("os.name", "");
-        if (osName != null && osName.startsWith("Mac")) {
-            // GLFW and AppKit operations both belong on the first thread.
-            frame.dispose();
-        } else {
-            SwingUtilities.invokeLater(new Runnable() {
-                public void run() { frame.dispose(); }
-            });
+        final JFrame toDispose = frame;
+        if (toDispose == null) {
+            disposed = true;
+            return;
         }
+        frame = null;
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                toDispose.dispose();
+                disposed = true;
+            }
+        });
+    }
+
+    /** True once the window {@link #close()} asked for is gone. */
+    public boolean isDisposed() {
+        return disposed;
     }
 
     /** True once, if the operator asked for S: the Driver Station's START. */
