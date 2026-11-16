@@ -33,19 +33,24 @@ public class GamePadReadings {
     public boolean yWasReleased;
     public boolean yWasPressed;
     public boolean backWasPressed;
+    public boolean startWasPressed;
+    public int direction1 = 1;
+    public int direction2 = 1;
 
     public void update(Gamepad gamepad1, Gamepad gamepad2) {
         bButton = gamepad1.b || gamepad2.b;
         aButton = gamepad1.a || gamepad2.a;
         xButton = gamepad1.x || gamepad2.x;
         yButton = gamepad1.y || gamepad2.y;
+        direction1 *= gamepad1.startWasPressed() ? -1 : 1;
+        direction2 *= gamepad2.startWasPressed() ? -1 : 1;
         leftBumper = gamepad1.left_bumper || gamepad2.left_bumper;
         rightBumper = gamepad1.right_bumper || gamepad2.right_bumper;
 
         leftStickX =  Math.abs(gamepad1.left_stick_x) >= Math.abs(gamepad2.left_stick_x) ?
-                gamepad1.left_stick_x : gamepad2.left_stick_x;
+                gamepad1.left_stick_x * direction1 : gamepad2.left_stick_x * direction2;
         leftStickY = Math.abs(gamepad1.left_stick_y) >= Math.abs(gamepad2.left_stick_y) ?
-                gamepad1.left_stick_y : gamepad2.left_stick_y;
+                gamepad1.left_stick_y * direction1 : gamepad2.left_stick_y * direction2;
         rightStickX = Math.abs(gamepad1.right_stick_x) >= Math.abs(gamepad2.right_stick_x) ?
                 gamepad1.right_stick_x : gamepad2.right_stick_x;
         rightStickY =  Math.abs(gamepad1.right_stick_y) >= Math.abs(gamepad2.right_stick_y) ?
@@ -73,5 +78,6 @@ public class GamePadReadings {
         yWasReleased = gamepad1.yWasReleased() || gamepad2.yWasReleased();
         yWasPressed = gamepad1.yWasPressed() || gamepad2.yWasPressed();
         backWasPressed = gamepad1.backWasPressed() || gamepad2.backWasPressed();
+        startWasPressed = gamepad1.startWasPressed() || gamepad2.startWasPressed();
     }
 }

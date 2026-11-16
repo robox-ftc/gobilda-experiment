@@ -37,6 +37,8 @@ public class TeleOp extends OpMode {
     private final double TOLERANCE = 0.05;
     private final double SHOOTING_FRACTION = 0.5; // a bit lower
     private boolean color = true; // true: blue, false: red
+    private int padOneDirection = 1;
+    private int padTwoDirection = 1;
     /*
      * Code to run ONCE when the driver hits INIT
      */
@@ -156,12 +158,12 @@ public class TeleOp extends OpMode {
                 driveControls.rotationPower = clamp(angle(90 - heading) * TOLERANCE);
             } catch (Exception ignored) {}
         }
-        if (gamePadReading.dPadRight) {
+        if (gamePadReading.dPadDown) {
             try {
                 driveControls.rotationPower = clamp(angle(180 - heading) * TOLERANCE);
             } catch (Exception ignored) {}
         }
-        if (gamePadReading.dPadRight) {
+        if (gamePadReading.dPadLeft) {
             try {
                 driveControls.rotationPower = clamp(angle(270 - heading) * TOLERANCE);
             } catch (Exception ignored) {}
