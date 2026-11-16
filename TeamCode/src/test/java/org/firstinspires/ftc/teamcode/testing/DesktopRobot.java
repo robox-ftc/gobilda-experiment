@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode.testing;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
@@ -43,6 +45,9 @@ public final class DesktopRobot {
 
     /** Pinpoint stand-in whose readings follow the field simulator. */
     public final GoBildaPinpointDriver pinpoint = Mockito.mock(GoBildaPinpointDriver.class);
+
+    /** The webcam's configuration entry; what it sees is {@link SimCamera}. */
+    public final WebcamName webcam = Mockito.mock(WebcamName.class);
     private double odometryXInches;
     private double odometryYInches;
     private double odometryHeadingDegrees;
@@ -91,6 +96,7 @@ public final class DesktopRobot {
             if (!missing.remove(motor.name)) devices.put(motor.name, motor.device);
         }
         if (!missing.remove("pinpoint")) devices.put("pinpoint", pinpoint);
+        if (!missing.remove("Webcam 1")) devices.put("Webcam 1", webcam);
         if (!missing.isEmpty()) {
             throw new IllegalArgumentException("no such device to unplug: " + missing);
         }

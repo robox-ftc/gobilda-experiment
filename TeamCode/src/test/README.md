@@ -59,8 +59,14 @@ right of the window. The menu lists what the Driver Station would: every
 `@TeleOp` (drive it with the pad) and `@Autonomous` OpMode in TeamCode, found
 automatically. Picking one loads it fresh in INIT. A `LinearOpMode` is listed
 but greyed out, since the harness only runs iterative OpModes. An OpMode that
-needs something the stand-in robot lacks (such as the turret motor, or a webcam
-and OpenCV) shows as crashed, with the line that asked for it.
+needs something the stand-in robot lacks (such as the turret motor) shows as
+crashed, with the line that asked for it.
+
+There is a `Webcam 1`, but OpenCV cannot run on the PC, so `SimCamera` stands in
+for the AprilTag processor: camera OpModes load and run, and never see a tag.
+Anything that aims at a tag (Teleop-2027-Intel's A, Y and left bumper
+centering) does nothing here. The `VisionPortal` itself is null, since its
+class cannot even be loaded off the robot.
 
 To start on a particular OpMode, pass its class name:
 `gradlew :TeamCode:gamepadGui --args="--gui --opmode=SomeOpMode"`.

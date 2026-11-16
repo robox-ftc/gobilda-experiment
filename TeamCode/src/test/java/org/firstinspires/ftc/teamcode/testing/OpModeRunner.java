@@ -27,6 +27,8 @@ import org.mockito.MockedConstruction;
  * can run it in real time. An {@code @Autonomous} OpMode is stopped after
  * {@link #AUTONOMOUS_SECONDS}, as the Driver Station's timer does.
  *
+ * <p>A webcam is {@link SimCamera}: it streams and never sees an AprilTag.
+ *
  * <p>An exception thrown by the OpMode stops it, as on the robot, and is kept in
  * {@link #failure()} so it can be shown rather than lost.
  *
@@ -43,6 +45,7 @@ public final class OpModeRunner implements AutoCloseable {
     private final DesktopRobot robot;
     private final DriverStation ds;
     private final MockedConstruction<ElapsedTime> timers;
+    private final SimCamera camera;
     private final OpMode opMode;
     private final boolean autonomous;
     private final String name;
@@ -63,9 +66,17 @@ public final class OpModeRunner implements AutoCloseable {
 
         // Installed before construction: OpModes create timers in field initialisers.
         timers = robot.clock.install();
+        // OpenCV cannot load on the PC, so AprilTag code gets a camera that sees nothing.
+        try {
+            camera = SimCamera.install();
+        } catch (RuntimeException | Error e) {
+            timers.close();
+            throw e;
+        }
         try {
             opMode = type.getDeclaredConstructor().newInstance();
         } catch (ReflectiveOperationException e) {
+            camera.close();
             timers.close();
             throw new IllegalArgumentException("cannot construct " + type.getName(), e);
         }
@@ -165,6 +176,7 @@ public final class OpModeRunner implements AutoCloseable {
 
     @Override
     public void close() {
+        camera.close();
         timers.close();
     }
 
