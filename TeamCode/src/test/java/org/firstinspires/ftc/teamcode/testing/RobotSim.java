@@ -80,6 +80,20 @@ public final class RobotSim {
         againstWall = false;
     }
 
+    /** Sets the robot's simulated starting position without changing its heading. */
+    public void setStartingPosition(double x, double y) {
+        double half = ROBOT_INCHES / 2.0;
+        xInches = Math.max(half, Math.min(FIELD_INCHES - half, x));
+        yInches = Math.max(half, Math.min(FIELD_INCHES - half, y));
+        vxIps = 0;
+        vyIps = 0;
+        omegaDps = 0;
+        forwardCmd = 0;
+        strafeCmd = 0;
+        turnCmd = 0;
+        againstWall = false;
+    }
+
     /** Advances the picture by {@code dtSec}. */
     public void step(double flPower, double frPower, double rlPower, double rrPower, double dtSec) {
 

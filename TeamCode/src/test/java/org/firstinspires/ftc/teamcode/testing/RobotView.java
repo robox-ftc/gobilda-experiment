@@ -13,6 +13,8 @@ import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
@@ -149,6 +151,8 @@ public final class RobotView {
     private volatile boolean open = true;
     private volatile boolean resetRequested;
     private volatile boolean startRequested;
+    private volatile boolean canSetStartingPosition;
+    private volatile Point2D.Double requestedStartingPosition;
 
     private final Deque<Point2D.Double> trail = new ArrayDeque<Point2D.Double>();
     private final List<String> telemetry = new ArrayList<String>();
@@ -188,6 +192,11 @@ public final class RobotView {
                             for (Shortcut shortcut : shortcuts) {
                                 if (e.getKeyCode() == shortcut.keyCode) shortcut.action.run();
                             }
+                        }
+                    });
+                    panel.addMouseListener(new MouseAdapter() {
+                        @Override public void mousePressed(MouseEvent e) {
+                            requestStartingPosition(e.getX(), e.getY(), panel.getWidth(), panel.getHeight());
                         }
                     });
                     frame.setVisible(true);
@@ -241,6 +250,30 @@ public final class RobotView {
         return true;
     }
 
+    /** Returns the next requested field position, or null when none is pending. */
+    public Point2D.Double consumeStartingPositionRequest() {
+        Point2D.Double requested = requestedStartingPosition;
+        requestedStartingPosition = null;
+        return requested;
+    }
+
+    private void requestStartingPosition(int mouseX, int mouseY, int width, int height) {
+        if (!canSetStartingPosition) return;
+        int margin = 14;
+        int statusHeight = 24;
+        int fieldSize = Math.min(height - 2 * margin - statusHeight,
+                (int) ((width - 3 * margin) * 0.50));
+        int fieldX = margin;
+        int fieldY = margin;
+        if (fieldSize <= 0 || mouseX < fieldX || mouseX > fieldX + fieldSize
+                || mouseY < fieldY || mouseY > fieldY + fieldSize) return;
+
+        double inchesPerPixel = RobotSim.FIELD_INCHES / fieldSize;
+        double x = (mouseX - fieldX) * inchesPerPixel;
+        double y = RobotSim.FIELD_INCHES - (mouseY - fieldY) * inchesPerPixel;
+        requestedStartingPosition = new Point2D.Double(x, y);
+    }
+
     /** True once, if the operator asked to restart: back to INIT, robot re-centred. */
     public boolean consumeResetRequest() {
         if (!resetRequested) return false;
@@ -252,6 +285,8 @@ public final class RobotView {
     public void update(GamePadReadings pad, DesktopRobot robot, RobotSim sim,
                        BallPath ball, List<String> newTelemetry, OpModeRunner runner) {
         Snapshot s = new Snapshot();
+        canSetStartingPosition = runner != null
+                && runner.phase() == OpModeRunner.Phase.INIT && runner.failure() == null;
         if (runner != null) {
             s.phase = GamepadHarness.phaseLine(runner);
             s.crashed = runner.failure() != null;
@@ -414,7 +449,7 @@ public final class RobotView {
         // -------------------------------------------------------------- the field
 
         private void drawField(Graphics2D g, Snapshot s, int x, int y, int size) {
-            panel(g, x, y, size, size, null);
+            panel(g, x, y, size, size, "FIELD - click in INIT to set start");
 
             double scale = size / RobotSim.FIELD_INCHES;
 

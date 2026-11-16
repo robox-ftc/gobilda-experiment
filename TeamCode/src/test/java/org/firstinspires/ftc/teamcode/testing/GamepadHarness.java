@@ -40,6 +40,7 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 import org.firstinspires.ftc.teamcode.devices.GamePadReadings;
 import org.lwjgl.glfw.GLFWGamepadState;
 
+import java.awt.geom.Point2D;
 import java.util.Locale;
 
 /**
@@ -314,9 +315,16 @@ public final class GamepadHarness {
                     sim.reset();
                     ball.reset();
                     view.clearTrail();
-                } else if (startPressed) {
-                    runner.start();
                 }
+
+                Point2D.Double requestedStart = view.consumeStartingPositionRequest();
+                if (requestedStart != null && runner.phase() == OpModeRunner.Phase.INIT) {
+                    sim.setStartingPosition(requestedStart.x, requestedStart.y);
+                    robot.resetOdometryOrigin(sim);
+                    view.clearTrail();
+                }
+
+                if (startPressed && !restart) runner.start();
 
                 long now = System.nanoTime();
                 double dt = (now - lastNanos) / 1e9;
@@ -329,6 +337,7 @@ public final class GamepadHarness {
                 ball.step(robot.intakeFlow(), robot.rampFlow(), robot.flywheelSpeed(), dt);
                 sim.step(robot.frontLeft.power, robot.frontRight.power,
                         robot.rearLeft.power, robot.rearRight.power, dt);
+                robot.updateOdometry(sim);
 
                 view.update(readings, robot, sim, ball, robot.telemetry.visible(), runner);
                 sleep();

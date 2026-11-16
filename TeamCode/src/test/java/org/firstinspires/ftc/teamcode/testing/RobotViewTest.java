@@ -51,6 +51,7 @@ public class RobotViewTest {
         GamePadReadings readings = runner.cycle(DT);
         sim.step(robot.frontLeft.power, robot.frontRight.power,
                 robot.rearLeft.power, robot.rearRight.power, DT);
+        robot.updateOdometry(sim);
         ball.step(robot.intakeFlow(), robot.rampFlow(), robot.flywheelSpeed(), DT);
         view.update(readings, robot, sim, ball, robot.telemetry.visible(), runner);
     }

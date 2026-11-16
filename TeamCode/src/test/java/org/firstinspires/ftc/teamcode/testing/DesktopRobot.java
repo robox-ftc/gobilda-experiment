@@ -1,8 +1,12 @@
 package org.firstinspires.ftc.teamcode.testing;
 
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.devices.Launcher;
+import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -37,6 +41,15 @@ public final class DesktopRobot {
     /** Driver Station telemetry, on robot time rather than the PC's. */
     public final FakeHardware.TelemetryRecorder telemetry = new FakeHardware.TelemetryRecorder(clock::nanos);
 
+    /** Pinpoint stand-in whose readings follow the field simulator. */
+    public final GoBildaPinpointDriver pinpoint = Mockito.mock(GoBildaPinpointDriver.class);
+    private double odometryXInches;
+    private double odometryYInches;
+    private double odometryHeadingDegrees;
+    private double odometryOriginX = RobotSim.FIELD_INCHES / 2.0;
+    private double odometryOriginY = RobotSim.FIELD_INCHES / 2.0;
+    private double odometryOriginHeading;
+
     /** What an OpMode is given as {@code hardwareMap}. */
     public final HardwareMap hardwareMap;
 
@@ -66,6 +79,9 @@ public final class DesktopRobot {
      *     device behaves.
      */
     public DesktopRobot(String... unplugged) {
+        Mockito.when(pinpoint.getPosX(DistanceUnit.INCH)).thenAnswer(call -> odometryXInches);
+        Mockito.when(pinpoint.getPosY(DistanceUnit.INCH)).thenAnswer(call -> odometryYInches);
+        Mockito.when(pinpoint.getHeading(AngleUnit.DEGREES)).thenAnswer(call -> odometryHeadingDegrees);
         launcherLeft.plant = LAUNCHER_PLANT;
         launcherRight.plant = LAUNCHER_PLANT;
 
@@ -74,10 +90,26 @@ public final class DesktopRobot {
         for (FakeHardware.Motor motor : motors()) {
             if (!missing.remove(motor.name)) devices.put(motor.name, motor.device);
         }
+        if (!missing.remove("pinpoint")) devices.put("pinpoint", pinpoint);
         if (!missing.isEmpty()) {
             throw new IllegalArgumentException("no such device to unplug: " + missing);
         }
         hardwareMap = DesktopHardwareMap.of(devices);
+    }
+
+    /** Sets the pose the simulated Pinpoint treats as its reset origin. */
+    public void resetOdometryOrigin(RobotSim sim) {
+        odometryOriginX = sim.xInches;
+        odometryOriginY = sim.yInches;
+        odometryOriginHeading = sim.headingDeg;
+    }
+
+    /** Copies the field simulator pose into Pinpoint's forward/left coordinate frame. */
+    public void updateOdometry(RobotSim sim) {
+        odometryXInches = sim.yInches - odometryOriginY;
+        odometryYInches = odometryOriginX - sim.xInches;
+        // RobotSim uses clockwise-positive heading; Pinpoint reports counterclockwise-positive.
+        odometryHeadingDegrees = -(sim.headingDeg - odometryOriginHeading);
     }
 
     public List<FakeHardware.Motor> motors() {

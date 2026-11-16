@@ -50,6 +50,7 @@ public class AutoRunTest {
         runner.cycle(DT);
         sim.step(robot.frontLeft.power, robot.frontRight.power,
                 robot.rearLeft.power, robot.rearRight.power, DT);
+        robot.updateOdometry(sim);
     }
 
     private void run(double seconds) {
