@@ -1,11 +1,14 @@
 package org.firstinspires.ftc.teamcode.devices;
 
+import org.firstinspires.ftc.teamcode.TeleOp;
 import org.firstinspires.ftc.teamcode.data.AimingParameters;
 import org.firstinspires.ftc.teamcode.data.Target;
 
 public class LauncherControls {
+    public static final double TARGET_FRACTION = 0.6;
     public double wheelPower;
     public double rampPower;
+    public double intake;
 
     public LauncherControls() {
         this.wheelPower = 0.0;
@@ -25,10 +28,19 @@ public class LauncherControls {
     public static LauncherControls readControls(GamePadReadings newReadings) {
         LauncherControls controls = new LauncherControls();
         controls.wheelPower = newReadings.leftTrigger;
-        if (newReadings.bButton) {
-            controls.wheelPower = -0.75;
+        if (newReadings.rightBumper) {
+            controls.rampPower = 1;
+            controls.intake = 1;
+        } else if (newReadings.bButton) {
+            controls.wheelPower = -0.5;
+            controls.rampPower = -0.7;
+            controls.intake = -0.7;
+        } else {
+            controls.wheelPower *= TARGET_FRACTION;
         }
-        controls.rampPower = newReadings.bButton ? -1 : ((newReadings.leftBumper || newReadings.rightBumper) ? 1 : 0);
+        if (newReadings.xButton) {
+            controls.rampPower = 1;
+        }
         return controls;
     }
 }

@@ -64,24 +64,24 @@ public class LauncherTest {
     }
 
     @Test
-    public void runTakesTheWheelPowerFromTheControls() {
+    public void runTakesTheWheelFractionFromTheControls() {
         LauncherControls controls = new LauncherControls();
         controls.wheelPower = 0.4;
 
         launcher.run(controls);
 
-        verify(left).setPower(0.4);
-        verify(right).setPower(0.4);
+        verify(left).setVelocity(0.4 * Launcher.LAUNCHER_MAX_VELOCITY_TPS);
+        verify(right).setVelocity(0.4 * Launcher.LAUNCHER_MAX_VELOCITY_TPS);
         verify(telemetry).addData(eq("RPM-left"), (Object) any());
         verify(telemetry).addData(eq("RPM-right"), (Object) any());
     }
 
     @Test
-    public void spinToVelocityIsTheClosedLoopPath() {
-        launcher.spinToVelocity(1000);
+    public void spinToFractionIsTheClosedLoopPath() {
+        launcher.spinToFraction(0.5);
 
-        verify(left).setVelocity(1000);
-        verify(right).setVelocity(1000);
+        verify(left).setVelocity(0.5 * Launcher.LAUNCHER_MAX_VELOCITY_TPS);
+        verify(right).setVelocity(0.5 * Launcher.LAUNCHER_MAX_VELOCITY_TPS);
     }
 
     @Test

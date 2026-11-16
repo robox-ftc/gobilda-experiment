@@ -87,13 +87,13 @@ public class LauncherRpmModelTest {
 
     @Test
     public void aVelocityOfZeroIsHeldNotCoasted() {
-        // spinToVelocity is the closed-loop path. setVelocity(0) leaves the
+        // spinToFraction is the closed-loop path. setVelocity(0) leaves the
         // motor enabled with a target of zero (LynxDcMotorController, SDK
         // 11.0.0), so the velocity loop pulls the wheels down.
-        launcher.spinToVelocity(DesktopRobot.LAUNCHER_PLANT.freeTicksPerSec);
+        launcher.spinToFraction(1.0);
         steps(400, 0.005);
 
-        launcher.spinToVelocity(0);
+        launcher.spinToFraction(0);
         steps(400, 0.005);
 
         assertTrue(robot.flywheelSpeed() < 0.05);

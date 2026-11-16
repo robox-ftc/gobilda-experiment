@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.devices;
 import static org.firstinspires.ftc.teamcode.utils.Utils.applyAction;
 import static org.firstinspires.ftc.teamcode.utils.Utils.applyActions;
 
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
@@ -84,6 +85,9 @@ public class Drivetrain {
             rearRightPower /= maxPower;
             rearLeftPower /= maxPower;
         }
+        telemetry.addData("Translation-Forward:", controls.translationYPower);
+        telemetry.addData("Translation-Strafe:", controls.translationXPower);
+        telemetry.addData("Rotation:", controls.rotationPower);
 
         return new double[]{frontLeftPower, frontRightPower, rearRightPower, rearLeftPower};
     }
