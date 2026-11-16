@@ -5,8 +5,6 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.devices.Drivetrain;
 import org.firstinspires.ftc.teamcode.devices.DrivetrainControls;
 import org.firstinspires.ftc.teamcode.devices.Intake;
@@ -15,7 +13,7 @@ import org.firstinspires.ftc.teamcode.devices.Ramp;
 import org.firstinspires.ftc.teamcode.devices.Task;
 
 import java.util.*;
-@Autonomous(name = "HiveKnightAuto", group = "Robot")
+@Autonomous(name = "HiveKnightAuto-TimeBased", group = "Robot")
 public class BIOBUZZAuto extends OpMode {
     private static final double TOLERANCE = 1; // Arbitrary
     private static final double RTOLERANCE = 5; // Arbitrary
@@ -26,7 +24,7 @@ public class BIOBUZZAuto extends OpMode {
     private final double R = 2 * 12.0 / 360.0;
     private boolean launcherStarted;
 
-//    private GoBildaPinpointDriver pinpoint;
+    //    private GoBildaPinpointDriver pinpoint;
     private Drivetrain drivetrain;
     private Intake intake;
     private Launcher launcher;
@@ -36,7 +34,7 @@ public class BIOBUZZAuto extends OpMode {
     private boolean SideSelected;
     private boolean OdometrySelected;
     private boolean TaskStarted;
-//    private boolean PinpointUsed;
+    //    private boolean PinpointUsed;
     private Queue<Task> queue;
     private ElapsedTime timer;
     ElapsedTime launcherTimer = new ElapsedTime();
@@ -91,27 +89,27 @@ public class BIOBUZZAuto extends OpMode {
                 SideSelected = true;
             }
         }
-            else if (SideSelected) {
-                if (gamepad1.aWasPressed() || gamepad2.aWasPressed()) {
-                    autoMode = AutoMode.Leave;
-                }
-                else if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) {
-                    autoMode = AutoMode.Park;
-                }
-                else if (gamepad1.xWasPressed() || gamepad2.xWasPressed()) {
-                    autoMode = AutoMode.Launch;
-                }
-                else if (gamepad1.yWasPressed() || gamepad2.yWasPressed()) {
-                    autoMode = AutoMode.LaunchAndPark;
-                }
-                else if (gamepad1.leftBumperWasPressed() || gamepad2.leftBumperWasPressed()) {
-                    autoMode = AutoMode.Intake;
-                }
-                else if (gamepad1.rightBumperWasPressed() || gamepad2.rightBumperWasPressed()) {
-                    SideSelected = false;
-                    autoMode = null;
-                }
+        else if (SideSelected) {
+            if (gamepad1.aWasPressed() || gamepad2.aWasPressed()) {
+                autoMode = AutoMode.Leave;
             }
+            else if (gamepad1.bWasPressed() || gamepad2.bWasPressed()) {
+                autoMode = AutoMode.Park;
+            }
+            else if (gamepad1.xWasPressed() || gamepad2.xWasPressed()) {
+                autoMode = AutoMode.Launch;
+            }
+            else if (gamepad1.yWasPressed() || gamepad2.yWasPressed()) {
+                autoMode = AutoMode.LaunchAndPark;
+            }
+            else if (gamepad1.leftBumperWasPressed() || gamepad2.leftBumperWasPressed()) {
+                autoMode = AutoMode.Intake;
+            }
+            else if (gamepad1.rightBumperWasPressed() || gamepad2.rightBumperWasPressed()) {
+                SideSelected = false;
+                autoMode = null;
+            }
+        }
         if (SideSelected) {
             telemetry.addLine(HiveSide ? "Hive Side is Selected" : "Wall Side is Selected");
         }
@@ -131,18 +129,18 @@ public class BIOBUZZAuto extends OpMode {
     @Override
     public void start() {
         if (autoMode == null){
-            autoMode = AutoMode.Leave;
+            autoMode = AutoMode.LaunchAndPark;
         }
 
-        switch (autoMode) {
+        switch (autoMode) { //Could be used for odometry bakcup
             case Leave:
-                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 0.25)); //Time and power settings
+                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 0.25)); //Time and power settings
                 break;
 
             case Park:
                 if (HiveSide) {
                     queue.add(new Task(0, 800, Task.Type.TRANSLATE, -0.5, 0));
-                    queue.add(new Task(0, 1500, Task.Type.TRANSLATE, -0.1, 0.25));
+                    queue.add(new Task(0, 2200, Task.Type.TRANSLATE, -0.1, 0.25));
                 } else {
                     queue.add(new Task(0, 3000, Task.Type.TRANSLATE, 0.25, 0.14));
                 }
@@ -150,7 +148,7 @@ public class BIOBUZZAuto extends OpMode {
 
             case Launch:
                 if (HiveSide) {
-                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.8, 3000));
+                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.85, 3000));
                 } else {
                     queue.add(new Task(0, 3000, Task.Type.TRANSLATE, 0.25, 0.14));
                     queue.add(new Task(0, 810, Task.Type.ROTATE, -0.5, 0));
@@ -160,8 +158,9 @@ public class BIOBUZZAuto extends OpMode {
 
             case LaunchAndPark:
                 if (HiveSide) {
-                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.8, 3000)); //Time, Power, and spin up time
-                    queue.add(new Task(0, 3000, Task.Type.TRANSLATE, -0.14, 0.25));
+                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.85, 3000)); //Time, Power, and spin up time
+                    queue.add(new Task(0, 700, Task.Type.TRANSLATE, -0.3, 0));
+                    queue.add(new Task(0, 1300, Task.Type.TRANSLATE, -0.11, 0.33));
                 } else {
                     queue.add(new Task(0, 3000, Task.Type.TRANSLATE, 0.25, 0.14));
                     queue.add(new Task(0, 810, Task.Type.ROTATE, -0.5, 0));
@@ -174,8 +173,8 @@ public class BIOBUZZAuto extends OpMode {
                     queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.9, 3000));//Time, Power, and spin up time
                     queue.add(new Task(0, 200, Task.Type.TRANSLATE, 0, 0.2));
                     queue.add(new Task(0, 300, Task.Type.ROTATE, 0.5, 0));
-                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, -0.5));
-                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 0.5));
+                    queue.add(new Task(0, 800, Task.Type.TRANSLATE, 0, -0.5));
+                    queue.add(new Task(0, 800, Task.Type.TRANSLATE, 0, 0.5));
                     queue.add(new Task(0, 300, Task.Type.ROTATE, -0.5, 0));
                     queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.9, 3000));
                     queue.add(new Task(0, 500, Task.Type.TRANSLATE, -0.2, 0.25));
@@ -225,18 +224,18 @@ public class BIOBUZZAuto extends OpMode {
                     }
                     break;
 
-                    case ROTATE:
-                        double error = task.target;
-                        if (error > 180) error -= 360;
-                        if (error < -180) error += 360;
-                        if (timer.milliseconds() > task.end) {
-                            controls.rotationPower = 0;
-                            queue.remove();
-                            TaskStarted = false;
-                        } else {
-                            controls.rotationPower = pClamp(task.target);
-                        }
-                        break;
+                case ROTATE:
+                    double error = task.target;
+                    if (error > 180) error -= 360;
+                    if (error < -180) error += 360;
+                    if (timer.milliseconds() > task.end) {
+                        controls.rotationPower = 0;
+                        queue.remove();
+                        TaskStarted = false;
+                    } else {
+                        controls.rotationPower = pClamp(task.target);
+                    }
+                    break;
 
                 case LAUNCH:
                     if (intake != null && launcher != null) {
@@ -247,7 +246,7 @@ public class BIOBUZZAuto extends OpMode {
                             launcherStarted = true;
                         }
 
-                        if (SpinUpTimer.milliseconds() < task.target2) {
+                        if (launcherTimer.milliseconds() < task.target2) {
                             launcher.spin(task.target);
                         }
 
@@ -281,16 +280,23 @@ public class BIOBUZZAuto extends OpMode {
                     break;
             }
         } else {
-            if (intake != null) {
-                intake.spin(0);
+            if (intake != null) intake.spin(0);
+            if (launcher != null) launcher.spin(0);
+            if (ramp != null) ramp.spin(0);
+
+            if (drivetrain != null) {
+                controls.translationXPower = 0;
+                controls.translationYPower = 0;
+                controls.rotationPower = 0;
+                drivetrain.run(controls);
             }
         }
         if (drivetrain != null) drivetrain.run(controls);
 //if (PinpointUsed) {
-    //telemetry.addData("Current X", x);
-    //telemetry.addData("Current Y", y);
-    //telemetry.addData("Current Heading", heading);
-    //telemetry.addData("Remaining Tasks", queue.size());
+        //telemetry.addData("Current X", x);
+        //telemetry.addData("Current Y", y);
+        //telemetry.addData("Current Heading", heading);
+        //telemetry.addData("Remaining Tasks", queue.size());
 //}
         telemetry.update();
     }
