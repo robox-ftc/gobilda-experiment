@@ -48,6 +48,8 @@ public class NewAuto extends OpMode {
     private static final double H_DIR = 1.0;
     private static final double HEADING_P = 0.01; // power per degree
     private static final double MAX_ROTATION_POWER = 0.2;
+    // Below this |heading - hold|, drive in field X/Y without rotating the error vector
+    private static final double FIELD_DRIVE_HEADING_DEG = 5;
 
     // Tunable P
     private final double P = 1.0 / 100.0; // used by ROTATE via clamp()
@@ -68,6 +70,8 @@ public class NewAuto extends OpMode {
     private Queue<Task> queue;
     private ElapsedTime timer;
     private String lastTranslateResult = "-";
+    private Task translateCaptureTask = null;
+    private double translateHeadingHold = 0;
     private final Set<Integer> redID = new HashSet<>();
     private final Set<Integer> blueID = new HashSet<>();
 
@@ -231,25 +235,45 @@ public class NewAuto extends OpMode {
             if (timer.milliseconds() >= task.begin) {
                 switch (task.type) {
                     case TRANSLATE:
+                        if (translateCaptureTask != task) {
+                            translateCaptureTask = task;
+                            translateHeadingHold = heading;
+                        }
                         double errorX = task.target - x;
                         double errorY = task.target2 - y;
+                        double headingDrift = heading - translateHeadingHold;
+                        while (headingDrift > 180) headingDrift -= 360;
+                        while (headingDrift < -180) headingDrift += 360;
+                        double headingErr = translateHeadingHold - heading;
+                        while (headingErr > 180) headingErr -= 360;
+                        while (headingErr < -180) headingErr += 360;
                         boolean arrived = Math.abs(errorX) <= TOLERANCE && Math.abs(errorY) <= TOLERANCE;
                         boolean timedOut = timer.milliseconds() > task.end;
                         telemetry.addData("Error X", errorX);
                         telemetry.addData("Error Y", errorY);
+                        telemetry.addData("Heading hold", translateHeadingHold);
+                        telemetry.addData("Heading err", headingErr);
                         if (arrived || timedOut) {
                             lastTranslateResult = (arrived ? "ARRIVED" : "TIMEOUT") + " at " + (int) timer.milliseconds() + "ms";
+                            translateCaptureTask = null;
                             controls.translationXPower = 0;
                             controls.translationYPower = 0;
                             queue.remove();
                         } else {
-                            // Field error -> robot frame (heading is CCW positive)
-                            double h = Math.toRadians(heading);
-                            double robotRight = errorX * Math.cos(h) + errorY * Math.sin(h);
-                            double robotForward = -errorX * Math.sin(h) + errorY * Math.cos(h);
+                            double robotRight;
+                            double robotForward;
+                            if (Math.abs(headingDrift) <= FIELD_DRIVE_HEADING_DEG) {
+                                robotRight = errorX;
+                                robotForward = errorY;
+                            } else {
+                                double h = Math.toRadians(headingDrift);
+                                robotRight = errorX * Math.cos(h) + errorY * Math.sin(h);
+                                robotForward = -errorX * Math.sin(h) + errorY * Math.cos(h);
+                            }
                             controls.translationXPower = X_DIR * drivePower(robotRight, MIN_POWER_X);
                             controls.translationYPower = Y_DIR * drivePower(robotForward, MIN_POWER_Y);
-                            controls.rotationPower = H_DIR * Math.min(Math.max(heading * HEADING_P, -MAX_ROTATION_POWER), MAX_ROTATION_POWER);
+                            // TEST: no heading hold — restore headingErr * HEADING_P block after this run
+                            controls.rotationPower = 0;
                         }
                         if (intake != null) {
                             intake.spin(1);
