@@ -43,7 +43,7 @@ public class NewAuto extends OpMode {
     private static final double MIN_POWER_Y = 0.08;
     private static final double MAX_POWER = 0.3;
     // Set true if turning the robot counter-clockwise (seen from above) makes the raw Pinpoint heading go negative
-    private static final boolean PINPOINT_UPSIDE_DOWN = false;
+    private static final boolean PINPOINT_UPSIDE_DOWN = true;
     // Heading hold during TRANSLATE; flip H_DIR if the robot spins faster instead of straightening
     private static final double H_DIR = 1.0;
     private static final double HEADING_P = 0.01; // power per degree
