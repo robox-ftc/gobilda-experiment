@@ -37,7 +37,7 @@ public class NewAuto extends OpMode {
 
     // Flip to 1 or -1 if that axis drives away from its target
     private static final double X_DIR = 1.0;
-    private static final double Y_DIR = 1.0;
+    private static final double Y_DIR = -1.0;
     // Below this power the robot doesn't move (strafing needs more than driving forward)
     private static final double MIN_POWER_X = 0.15;
     private static final double MIN_POWER_Y = 0.08;
