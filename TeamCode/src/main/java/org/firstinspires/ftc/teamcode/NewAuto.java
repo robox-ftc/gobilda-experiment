@@ -31,7 +31,7 @@ public class NewAuto extends OpMode {
         SHOOT,
         INTAKE
     }
-    private static final double TOLERANCE = 1; // Arbitrary
+    private static final double TOLERANCE = 0.25; // Arbitrary
     private static final int THRESHOLD = 10000; // Milliseconds before it checks the camera
     private static final double RTOLERANCE = 5; // Arbitrary
 
@@ -161,13 +161,14 @@ public class NewAuto extends OpMode {
                 queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -10));
                 break;
             case SHOOT:
-                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 7)); // 7 inches forward
+//                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 7)); // 7 inches forward
 //                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.65, 2));
-                queue.add(new Task(6500, 8000, Task.Type.TRANSLATE, -20, 7)); // -20, 15 is 25 inches left and 15 inches forward
-                queue.add(new Task(8500, 10000, Task.Type.TRANSLATE, -20, 30)); // -30, 70 is 35 inches left and 70 inches forward
-                queue.add(new Task(11500, 13000, Task.Type.TRANSLATE, -20, 50)); // -35, 70 is 45 inches left and 70 inches forward
-                queue.add(new Task(13500, 15000, Task.Type.TRANSLATE, -20, 60)); // -35, 70 is 45 inches left and 70 inches forward
-                queue.add(new Task(15500, 17000, Task.Type.TRANSLATE, -35, 60)); // -40, 70 is 50 inches left and 70 inches forward
+                queue.add(new Task(2500, 10000, Task.Type.TRANSLATE, -10, 7)); // -20, 15 is 25 inches left and 15 inches forward
+//                queue.add(new Task(6500, 9000, Task.Type.TRANSLATE, -10, 7)); // -20, 15 is 25 inches left and 15 inches forward
+//                queue.add(new Task(9500, 15000, Task.Type.TRANSLATE, -20, 30)); // -30, 70 is 35 inches left and 70 inches forward
+//                queue.add(new Task(11500, 13000, Task.Type.TRANSLATE, -20, 50)); // -35, 70 is 45 inches left and 70 inches forward
+//                queue.add(new Task(13500, 15000, Task.Type.TRANSLATE, -20, 60)); // -35, 70 is 45 inches left and 70 inches forward
+//                queue.add(new Task(15500, 17000, Task.Type.TRANSLATE, -35, 60)); // -40, 70 is 50 inches left and 70 inches forward
                 break;
             case INTAKE:
                 queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 7)); // 10 inches forward
@@ -306,6 +307,6 @@ public class NewAuto extends OpMode {
     }
 
     private double clamp(double error) {
-        return Math.min(Math.max(error * P, -0.2), 0.2);
+        return Math.min(Math.max(error * P, -0.1), 0.1);
     }
 }
