@@ -31,12 +31,21 @@ public class NewAuto extends OpMode {
         SHOOT,
         INTAKE
     }
-    private static final double TOLERANCE = 0.25; // Arbitrary
+    private static final double TOLERANCE = 1; // inches, checked per axis
     private static final int THRESHOLD = 10000; // Milliseconds before it checks the camera
     private static final double RTOLERANCE = 5; // Arbitrary
 
+    // Flip to 1 or -1 if that axis drives away from its target
+    private static final double X_DIR = -1.0;
+    private static final double Y_DIR = 1.0;
+    // Below this power the robot doesn't move (strafing needs more than driving forward)
+    private static final double MIN_POWER_X = 0.15;
+    private static final double MIN_POWER_Y = 0.08;
+    private static final double MAX_POWER = 0.3;
+
     // Tunable P
-    private final double P = 1.0 / 100.0; // tuned so 100 inches away would lead to 100 percent power
+    private final double P = 1.0 / 100.0; // used by ROTATE via clamp()
+    private final double DRIVE_P = 1.0 / 20.0; // 20 inches away -> MAX_POWER cap
     // Rotation Factor
     private final double R = 2 * 12.0 / 360.0;
     private boolean color = true; // default blue
@@ -52,6 +61,7 @@ public class NewAuto extends OpMode {
     private DrivetrainControls controls;
     private Queue<Task> queue;
     private ElapsedTime timer;
+    private String lastTranslateResult = "-";
     private final Set<Integer> redID = new HashSet<>();
     private final Set<Integer> blueID = new HashSet<>();
 
@@ -205,14 +215,18 @@ public class NewAuto extends OpMode {
                     case TRANSLATE:
                         double errorX = x + task.target; // Corrected logic
                         double errorY = y + task.target2;
-                        // square distance, unlikely it'll reach the end of the task
-                        if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
+                        boolean arrived = Math.abs(errorX) <= TOLERANCE && Math.abs(errorY) <= TOLERANCE;
+                        boolean timedOut = timer.milliseconds() > task.end;
+                        telemetry.addData("Error X", errorX);
+                        telemetry.addData("Error Y", errorY);
+                        if (arrived || timedOut) {
+                            lastTranslateResult = (arrived ? "ARRIVED" : "TIMEOUT") + " at " + (int) timer.milliseconds() + "ms";
                             controls.translationXPower = 0;
                             controls.translationYPower = 0;
                             queue.remove();
                         } else {
-                            controls.translationXPower = clamp(errorX);
-                            controls.translationYPower = clamp(errorY);
+                            controls.translationXPower = X_DIR * drivePower(errorX, MIN_POWER_X);
+                            controls.translationYPower = Y_DIR * drivePower(errorY, MIN_POWER_Y);
                         }
                         if (intake != null) {
                             intake.spin(1);
@@ -292,6 +306,8 @@ public class NewAuto extends OpMode {
         telemetry.addData("Current Y", y);
         telemetry.addData("Current Heading", heading);
         telemetry.addData("Remaining Tasks", queue.size());
+        telemetry.addData("Last Translate", lastTranslateResult);
+        telemetry.addData("Pinpoint Status", pinpoint.getDeviceStatus());
         telemetry.update();
     }
 
@@ -304,6 +320,12 @@ public class NewAuto extends OpMode {
         } catch (Exception e) {
             return (int) (task.target2 + 1); // end
         }
+    }
+
+    private double drivePower(double error, double minPower) {
+        if (Math.abs(error) <= TOLERANCE) return 0;
+        double magnitude = Math.min(Math.max(Math.abs(error * DRIVE_P), minPower), MAX_POWER);
+        return Math.copySign(magnitude, error);
     }
 
     private double clamp(double error) {
