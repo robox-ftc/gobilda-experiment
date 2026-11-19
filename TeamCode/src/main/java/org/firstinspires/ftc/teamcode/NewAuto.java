@@ -42,6 +42,8 @@ public class NewAuto extends OpMode {
     private static final double MIN_POWER_X = 0.15;
     private static final double MIN_POWER_Y = 0.08;
     private static final double MAX_POWER = 0.3;
+    // Set true if turning the robot counter-clockwise (seen from above) makes the raw Pinpoint heading go negative
+    private static final boolean PINPOINT_UPSIDE_DOWN = false;
     // Heading hold during TRANSLATE; flip H_DIR if the robot spins faster instead of straightening
     private static final double H_DIR = 1.0;
     private static final double HEADING_P = 0.01; // power per degree
@@ -83,10 +85,11 @@ public class NewAuto extends OpMode {
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
         pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         pinpoint.setOffsets(-5, 5, DistanceUnit.INCH);
-        // The X port pod reads +right and the Y port pod reads +backward, which is a mirrored frame:
-        // Pinpoint then rotates positions the wrong way whenever heading != 0. Reversing Y makes it +right / +forward.
+        // Raw pods read +right (X port) and +backward (Y port). With a right-side-up Pinpoint (heading CCW+)
+        // reverse Y to get +right / +forward. An upside-down Pinpoint (heading CW+) needs the raw mirrored frame.
         pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD,
-                GoBildaPinpointDriver.EncoderDirection.REVERSED);
+                PINPOINT_UPSIDE_DOWN ? GoBildaPinpointDriver.EncoderDirection.FORWARD
+                        : GoBildaPinpointDriver.EncoderDirection.REVERSED);
         pinpoint.resetPosAndIMU();
         try {
             launcher = new Launcher(hardwareMap, telemetry);
@@ -128,6 +131,13 @@ public class NewAuto extends OpMode {
 
     @Override
     public void init_loop() {
+        pinpoint.update();
+        telemetry.addData("Raw Heading (CCW should be +)", pinpoint.getHeading(AngleUnit.DEGREES));
+        telemetry.addData("X (right +)", readX());
+        telemetry.addData("Y (forward +)", readY());
+        if (gamepad1.rightBumperWasPressed() || gamepad2.rightBumperWasPressed()) {
+            pinpoint.resetPosAndIMU();
+        }
         if (gamepad1.xWasPressed() || gamepad2.xWasPressed()) {
             color = true;
             telemetry.addLine("Team BLUE is selected");
@@ -212,9 +222,9 @@ public class NewAuto extends OpMode {
         controls.rotationPower = 0;
 
         pinpoint.update();
-        double x = pinpoint.getPosX(DistanceUnit.INCH); // + right
-        double y = pinpoint.getPosY(DistanceUnit.INCH); // + forward
-        double heading = pinpoint.getHeading(AngleUnit.DEGREES);
+        double x = readX();
+        double y = readY();
+        double heading = readHeading();
 
         if (!queue.isEmpty()) {
             Task task = queue.peek();
@@ -333,6 +343,20 @@ public class NewAuto extends OpMode {
         } catch (Exception e) {
             return (int) (task.target2 + 1); // end
         }
+    }
+
+    private double readX() { // + right
+        return pinpoint.getPosX(DistanceUnit.INCH);
+    }
+
+    private double readY() { // + forward
+        double y = pinpoint.getPosY(DistanceUnit.INCH);
+        return PINPOINT_UPSIDE_DOWN ? -y : y;
+    }
+
+    private double readHeading() { // + counter-clockwise
+        double heading = pinpoint.getHeading(AngleUnit.DEGREES);
+        return PINPOINT_UPSIDE_DOWN ? -heading : heading;
     }
 
     private double drivePower(double error, double minPower) {
