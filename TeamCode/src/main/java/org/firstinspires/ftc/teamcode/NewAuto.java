@@ -162,15 +162,16 @@ public class NewAuto extends OpMode {
                 break;
             case SHOOT:
                 queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 7)); // 7 inches forward
-                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.7, 2));
-                queue.add(new Task(6500, 7500, Task.Type.TRANSLATE, -15, 15)); // -20, 15 is 25 inches left and 15 inches forward
-                queue.add(new Task(9000, 10000, Task.Type.TRANSLATE, -10, 65)); // -30, 70 is 35 inches left and 70 inches forward
-                queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, -25, 70)); // -35, 70 is 45 inches left and 70 inches forward
-                queue.add(new Task(14000, 15000, Task.Type.TRANSLATE, -30, 70)); // -40, 70 is 50 inches left and 70 inches forward
+//                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.65, 2));
+                queue.add(new Task(6500, 8000, Task.Type.TRANSLATE, -20, 7)); // -20, 15 is 25 inches left and 15 inches forward
+                queue.add(new Task(8500, 10000, Task.Type.TRANSLATE, -20, 30)); // -30, 70 is 35 inches left and 70 inches forward
+                queue.add(new Task(11500, 13000, Task.Type.TRANSLATE, -20, 50)); // -35, 70 is 45 inches left and 70 inches forward
+                queue.add(new Task(13500, 15000, Task.Type.TRANSLATE, -20, 60)); // -35, 70 is 45 inches left and 70 inches forward
+                queue.add(new Task(15500, 17000, Task.Type.TRANSLATE, -35, 60)); // -40, 70 is 50 inches left and 70 inches forward
                 break;
             case INTAKE:
                 queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 7)); // 10 inches forward
-                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.7, 2));
+                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.65, 2));
                 queue.add(new Task(6500, 7500, Task.Type.TRANSLATE, -30, -5));
                 queue.add(new Task(8500, 9500, Task.Type.TRANSLATE, 5, -5));
                 queue.add(new Task(10000, 15000, Task.Type.LAUNCH, 0.7, 2));
@@ -192,7 +193,7 @@ public class NewAuto extends OpMode {
         controls.rotationPower = 0;
 
         pinpoint.update();
-        double x = pinpoint.getPosX(DistanceUnit.INCH);
+        double x = -pinpoint.getPosX(DistanceUnit.INCH);
         double y = pinpoint.getPosY(DistanceUnit.INCH);
         double heading = pinpoint.getHeading(AngleUnit.DEGREES);
 
@@ -305,6 +306,6 @@ public class NewAuto extends OpMode {
     }
 
     private double clamp(double error) {
-        return Math.min(Math.max(error * P, -0.5), 0.5);
+        return Math.min(Math.max(error * P, -0.2), 0.2);
     }
 }
