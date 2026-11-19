@@ -36,12 +36,16 @@ public class NewAuto extends OpMode {
     private static final double RTOLERANCE = 5; // Arbitrary
 
     // Flip to 1 or -1 if that axis drives away from its target
-    private static final double X_DIR = -1.0;
+    private static final double X_DIR = 1.0;
     private static final double Y_DIR = 1.0;
     // Below this power the robot doesn't move (strafing needs more than driving forward)
     private static final double MIN_POWER_X = 0.15;
     private static final double MIN_POWER_Y = 0.08;
     private static final double MAX_POWER = 0.3;
+    // Heading hold during TRANSLATE; flip H_DIR if the robot spins faster instead of straightening
+    private static final double H_DIR = 1.0;
+    private static final double HEADING_P = 0.02; // power per degree
+    private static final double MAX_ROTATION_POWER = 0.3;
 
     // Tunable P
     private final double P = 1.0 / 100.0; // used by ROTATE via clamp()
@@ -227,6 +231,7 @@ public class NewAuto extends OpMode {
                         } else {
                             controls.translationXPower = X_DIR * drivePower(errorX, MIN_POWER_X);
                             controls.translationYPower = Y_DIR * drivePower(errorY, MIN_POWER_Y);
+                            controls.rotationPower = H_DIR * Math.min(Math.max(heading * HEADING_P, -MAX_ROTATION_POWER), MAX_ROTATION_POWER);
                         }
                         if (intake != null) {
                             intake.spin(1);
