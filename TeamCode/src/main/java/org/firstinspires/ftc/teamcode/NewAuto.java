@@ -44,8 +44,8 @@ public class NewAuto extends OpMode {
     private static final double MAX_POWER = 0.3;
     // Heading hold during TRANSLATE; flip H_DIR if the robot spins faster instead of straightening
     private static final double H_DIR = 1.0;
-    private static final double HEADING_P = 0.02; // power per degree
-    private static final double MAX_ROTATION_POWER = 0.3;
+    private static final double HEADING_P = 0.01; // power per degree
+    private static final double MAX_ROTATION_POWER = 0.2;
 
     // Tunable P
     private final double P = 1.0 / 100.0; // used by ROTATE via clamp()
@@ -83,6 +83,10 @@ public class NewAuto extends OpMode {
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
         pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         pinpoint.setOffsets(-5, 5, DistanceUnit.INCH);
+        // The X port pod reads +right and the Y port pod reads +backward, which is a mirrored frame:
+        // Pinpoint then rotates positions the wrong way whenever heading != 0. Reversing Y makes it +right / +forward.
+        pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD,
+                GoBildaPinpointDriver.EncoderDirection.REVERSED);
         pinpoint.resetPosAndIMU();
         try {
             launcher = new Launcher(hardwareMap, telemetry);
@@ -208,8 +212,8 @@ public class NewAuto extends OpMode {
         controls.rotationPower = 0;
 
         pinpoint.update();
-        double x = -pinpoint.getPosX(DistanceUnit.INCH);
-        double y = pinpoint.getPosY(DistanceUnit.INCH);
+        double x = pinpoint.getPosX(DistanceUnit.INCH); // + right
+        double y = pinpoint.getPosY(DistanceUnit.INCH); // + forward
         double heading = pinpoint.getHeading(AngleUnit.DEGREES);
 
         if (!queue.isEmpty()) {
@@ -217,8 +221,8 @@ public class NewAuto extends OpMode {
             if (timer.milliseconds() >= task.begin) {
                 switch (task.type) {
                     case TRANSLATE:
-                        double errorX = x + task.target; // Corrected logic
-                        double errorY = y + task.target2;
+                        double errorX = task.target - x;
+                        double errorY = task.target2 - y;
                         boolean arrived = Math.abs(errorX) <= TOLERANCE && Math.abs(errorY) <= TOLERANCE;
                         boolean timedOut = timer.milliseconds() > task.end;
                         telemetry.addData("Error X", errorX);
@@ -229,8 +233,12 @@ public class NewAuto extends OpMode {
                             controls.translationYPower = 0;
                             queue.remove();
                         } else {
-                            controls.translationXPower = X_DIR * drivePower(errorX, MIN_POWER_X);
-                            controls.translationYPower = Y_DIR * drivePower(errorY, MIN_POWER_Y);
+                            // Field error -> robot frame (heading is CCW positive)
+                            double h = Math.toRadians(heading);
+                            double robotRight = errorX * Math.cos(h) + errorY * Math.sin(h);
+                            double robotForward = -errorX * Math.sin(h) + errorY * Math.cos(h);
+                            controls.translationXPower = X_DIR * drivePower(robotRight, MIN_POWER_X);
+                            controls.translationYPower = Y_DIR * drivePower(robotForward, MIN_POWER_Y);
                             controls.rotationPower = H_DIR * Math.min(Math.max(heading * HEADING_P, -MAX_ROTATION_POWER), MAX_ROTATION_POWER);
                         }
                         if (intake != null) {
