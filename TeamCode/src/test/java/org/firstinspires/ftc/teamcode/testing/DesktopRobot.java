@@ -78,6 +78,19 @@ public final class DesktopRobot {
             LAUNCHER_FREE_RPM / 60.0 * Launcher.RRP,
             LAUNCHER_TAU_SECONDS, LAUNCHER_COAST_TAU_SECONDS);
 
+    /*
+     * The drive motors' encoders, so code that reads them (the "Cal 1: Drive
+     * Motors" OpMode) sees what a healthy robot would. 537.7 ticks per output
+     * turn is goBILDA's figure for the 312 RPM Yellow Jacket RobotSim assumes,
+     * and full power turns the wheel as fast as RobotSim moves the robot, so
+     * the two agree. The time constant is a guess. This changes nothing about
+     * how the simulated robot moves: RobotSim works from the powers.
+     */
+    public static final double DRIVE_TICKS_PER_REV = 537.7;
+    public static final double DRIVE_WHEEL_INCHES_PER_REV = Math.PI * 104.0 / 25.4;
+    public static final FakeHardware.Plant DRIVE_PLANT = new FakeHardware.Plant(
+            RobotSim.MAX_SPEED_IPS / DRIVE_WHEEL_INCHES_PER_REV * DRIVE_TICKS_PER_REV, 0.1, 0.1);
+
     /**
      * @param unplugged configuration names to leave out, as if they were
      *     missing from the robot configuration. Looking one up then throws the
@@ -87,6 +100,7 @@ public final class DesktopRobot {
     public DesktopRobot(String... unplugged) {
         launcherLeft.plant = LAUNCHER_PLANT;
         launcherRight.plant = LAUNCHER_PLANT;
+        for (FakeHardware.Motor wheel : driveMotors()) wheel.plant = DRIVE_PLANT;
 
         Set<String> missing = new HashSet<>(Arrays.asList(unplugged));
         Map<String, Object> devices = new LinkedHashMap<>();
@@ -114,6 +128,10 @@ public final class DesktopRobot {
         odometry.track(sim);
     }
 
+    public List<FakeHardware.Motor> driveMotors() {
+        return Arrays.asList(frontLeft, frontRight, rearLeft, rearRight);
+    }
+
     public List<FakeHardware.Motor> motors() {
         return Arrays.asList(frontLeft, frontRight, rearLeft, rearRight,
                 intakeWheel, launcherLeft, launcherRight, rampWheel);
@@ -121,9 +139,10 @@ public final class DesktopRobot {
 
     /**
      * Advances the modelled hardware, so the robot code has something to read
-     * back next cycle. Nothing outside the launcher wheels is modelled.
+     * back next cycle: the launcher wheels and the drive encoders.
      */
     public void step(double dtSec) {
+        for (FakeHardware.Motor wheel : driveMotors()) wheel.step(dtSec);
         launcherLeft.step(dtSec);
         launcherRight.step(dtSec);
     }

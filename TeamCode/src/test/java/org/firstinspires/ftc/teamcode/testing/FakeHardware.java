@@ -86,6 +86,20 @@ public final class FakeHardware {
         /** Modelled shaft speed in encoder ticks per second. */
         public volatile double simTicksPerSec;
 
+        /** Modelled shaft position in encoder ticks, since the motor was made. */
+        public volatile double simTicks;
+
+        /**
+         * Whose encoder is plugged into this motor's port: its own (the
+         * default), another motor's (crossed cables), or null (unplugged). Only
+         * what the code reads back changes; the modelled motion does not.
+         * Matters only with a plant attached.
+         */
+        public volatile Motor encoder = this;
+
+        /** Where the port's counter was last zeroed (STOP_AND_RESET_ENCODER), in the encoder's ticks. */
+        private volatile double encoderZero;
+
         public volatile int targetPosition;
         public volatile DcMotor.RunMode mode;
         public volatile DcMotor.Direction direction = DcMotor.Direction.FORWARD;
@@ -116,6 +130,13 @@ public final class FakeHardware {
             // Explicit Euler on dv/dt = (target - v) / tau, clamped so a long
             // frame cannot overshoot past the target and oscillate.
             simTicksPerSec += (target - simTicksPerSec) * Math.min(1.0, dtSec / tau);
+            simTicks += simTicksPerSec * dtSec;
+        }
+
+        /** What this port's encoder counter reads. */
+        int encoderTicks() {
+            Motor source = encoder;
+            return source == null ? 0 : (int) Math.round(source.simTicks - encoderZero);
         }
 
         Motor(String name) {
@@ -157,18 +178,23 @@ public final class FakeHardware {
                 case "getVelocity":
                     // With a plant attached this is deliberately NOT the command:
                     // it is what the robot code would read off the encoder.
-                    return state.plant == null ? state.velocity : state.simTicksPerSec;
+                    if (state.plant == null) return state.velocity;
+                    return state.encoder == null ? 0.0 : state.encoder.simTicksPerSec;
                 case "setTargetPosition":
                     state.targetPosition = (Integer) args[0];
                     return null;
                 case "getTargetPosition":
                     return state.targetPosition;
                 case "getCurrentPosition":
-                    // There is no position model, so the mechanism teleports.
-                    // Nothing in the robot code reads it.
-                    return state.targetPosition;
+                    // Without a plant there is no position model, so the
+                    // mechanism teleports.
+                    return state.plant == null ? state.targetPosition : state.encoderTicks();
                 case "setMode":
                     state.mode = (DcMotor.RunMode) args[0];
+                    if (state.mode == DcMotor.RunMode.STOP_AND_RESET_ENCODER) {
+                        Motor source = state.encoder;
+                        state.encoderZero = source == null ? 0 : source.simTicks;
+                    }
                     return null;
                 case "getMode":
                     return state.mode;

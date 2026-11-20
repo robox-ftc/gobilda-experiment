@@ -165,6 +165,16 @@ public final class GamepadHarness {
      * there and its camera told where it is - the state the OpMode's init()
      * should find, as on the real field.
      */
+    /**
+     * Puts the robot at {@code at}, keeping its heading, no nearer a wall
+     * than its corners reach when it turns, so it can spin on the spot there.
+     */
+    static void placeFreely(RobotSim sim, Point2D.Double at) {
+        double room = RobotSim.ROBOT_INCHES / 2 * Math.sqrt(2) + 0.5;
+        double far = RobotSim.FIELD_INCHES - room;
+        sim.setStartingPose(Math.max(room, Math.min(far, at.x)), Math.max(room, Math.min(far, at.y)), sim.headingDeg);
+    }
+
     private static DesktopRobot placedRobot(RobotSim sim, FieldSim field) {
         DesktopRobot robot = new DesktopRobot();
         robot.odometry.mounting = pinpointMounting.copy();
@@ -332,6 +342,7 @@ public final class GamepadHarness {
         System.out.println("Choose options on the pad, then START (or S) runs it.");
         System.out.println("R restarts. O, or clicking the OpMode name, picks another OpMode.");
         System.out.println("P, or clicking the field, in INIT moves the robot to a legal start spot.");
+        System.out.println("Shift-click puts it exactly there instead, e.g. open floor for the calibration OpModes.");
         System.out.println("BACK + START on the pad, or closing the window, quits.");
 
         view.setOpModes(OpModeCatalog.discover());
@@ -406,6 +417,18 @@ public final class GamepadHarness {
                     robot.vision.update(sim, field);
                     view.clearTrail();
                     System.out.println("Start spot: " + field.start().label + ".");
+                }
+
+                // A Shift-click puts it exactly there, kept far enough from the
+                // walls to turn on the spot without touching one.
+                Point2D.Double requestedFree = view.consumeFreePositionRequest();
+                if (requestedFree != null && runner.phase() == OpModeRunner.Phase.INIT) {
+                    placeFreely(sim, requestedFree);
+                    robot.resetOdometryOrigin(sim);
+                    robot.vision.update(sim, field);
+                    view.clearTrail();
+                    System.out.printf("Robot placed at (%.0f, %.0f) in, facing %.0f deg: not a legal start.%n",
+                            sim.xInches, sim.yInches, sim.headingDeg);
                 }
 
                 if (startPressed && !restart) runner.start();

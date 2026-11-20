@@ -41,12 +41,18 @@ public final class RobotSim {
      * assumption, not a measurement. Strafing is modelled at full speed, which
      * a real mecanum base usually falls short of. Measure the real robot -
      * one second at fixed power forward, sideways and turning, read off the
-     * Pinpoint - and put the numbers here.
+     * Pinpoint - and put the numbers here. The "Cal 3: Drive Speed" OpMode
+     * does exactly that: run it on the robot and here, and copy its
+     * full-power forward speed into MAX_SPEED_IPS (replacing the formula), its
+     * sideways percentage into STRAFE_FRACTION, and its turning speed into
+     * MAX_TURN_DPS.
      */
     public static final double FREE_SPEED_IPS = 312.0 / 60.0 * Math.PI * 104.0 / 25.4;
     public static final double WHEELBASE_INCHES = 336.0 / 25.4, TRACK_INCHES = 400.0 / 25.4;
     public static final double LOADED_FRACTION = 0.85;
     public static final double MAX_SPEED_IPS = FREE_SPEED_IPS * LOADED_FRACTION;
+    /** Sideways speed as a fraction of forward speed. 1.0 is a guess; real mecanum bases are usually slower sideways. */
+    public static final double STRAFE_FRACTION = 1.0;
     public static final double MAX_TURN_DPS =
             Math.toDegrees(MAX_SPEED_IPS / (TRACK_INCHES / 2 + WHEELBASE_INCHES / 2));
     // Deceleration is the same as acceleration here, which is the braking
@@ -153,8 +159,9 @@ public final class RobotSim {
 
         // Robot-frame target velocities, then into field coordinates.
         double h = Math.toRadians(headingDeg);
-        double targetVx = (strafeCmd * Math.cos(h) + forwardCmd * Math.sin(h)) * MAX_SPEED_IPS;
-        double targetVy = (forwardCmd * Math.cos(h) - strafeCmd * Math.sin(h)) * MAX_SPEED_IPS;
+        double strafe = strafeCmd * STRAFE_FRACTION;
+        double targetVx = (strafe * Math.cos(h) + forwardCmd * Math.sin(h)) * MAX_SPEED_IPS;
+        double targetVy = (forwardCmd * Math.cos(h) - strafe * Math.sin(h)) * MAX_SPEED_IPS;
         double targetOmega = turnCmd * MAX_TURN_DPS;
 
         // Ramp rather than step, or the robot teleports on a trigger press and

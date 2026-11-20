@@ -121,6 +121,52 @@ Do not use the green arrow next to `GamepadHarness.main()`. It fails with
 configuration, and an Android module has no Java source sets. Use the Gradle
 tasks above, or the checked-in run configurations in `.run/`.
 
+## Making the test UI match the real robot
+
+Three `@Autonomous` OpModes in `calibration/`, group "Calibration", measure
+what the test UI only assumes. Run each on the robot **and** in the test UI
+(pick it with **O**). Then compare the two result screens, or the log files:
+`adb pull /sdcard/FIRST/logs` on the robot, `TeamCode/build/telemetry-logs`
+here. Run them in this order, because each one relies on the one before.
+
+Cal 2 and Cal 3 need open floor. The test UI's start spots, including every
+plain click, are backed onto a wall, and turning there pushes the robot off
+the wall. **Shift-click** in INIT instead: that puts the robot exactly where
+you click, far enough from the walls to turn. Keep clear of the HIVE frame's
+base bars and the FLOWERS. If something does get in the way, on the robot or
+here, Cal 3 marks a move BLOCKED when its out and back distances don't match,
+and leaves it out of the speeds. Cal 2 reports OFFSETS: NOT MEASURED when its
+two turns disagree.
+
+1. **Cal 1: Drive Motors (wheels up)**, about 14 s. Prop the robot up so the
+   wheels are off the floor. Each drive motor runs alone at 0.2 and then 0.5
+   power, while all four encoders are watched. It reports OK, NO ENCODER
+   COUNTS, ENCODER IN THE WRONG PORT, or SPEED DOES NOT FOLLOW POWER for each
+   motor. `Drivetrain` uses RUN_USING_ENCODER, so a bad encoder makes the hub
+   drive that motor at full power whatever the code asks. A time-based auto
+   then goes several times further than it does here.
+2. **Cal 2: Pinpoint Check.** In INIT, push the robot forward, then left, then
+   turn it counterclockwise, pressing A after each. It says what to change in
+   `devices/PinpointSetup`: a pod direction, or `MIRRORED` (this robot's
+   Pinpoint reads as a mirror image, which the code undoes). After START, the
+   robot turns about 180 degrees and back by itself to measure the pod offsets,
+   and prints the `--pinpoint=` option that gives the test UI those offsets.
+3. **Cal 3: Drive Speed**, about 21 s, with about 5 ft clear all round. It runs
+   timed moves at 0.3 and 0.6 power, measured with the Pinpoint, and reports
+   full-power speed forward, sideways and turning, corrected to 12 V. Copy
+   them into `BIOBUZZAuto` (its "For BIOBUZZAuto" line) and into `RobotSim`'s
+   `MAX_SPEED_IPS`, `STRAFE_FRACTION` and `MAX_TURN_DPS`. Here it reports
+   56.9 in/s, 100% and 225 deg/s, which is what `RobotSim` assumes. The drive
+   runs RUN_WITHOUT_ENCODER, as `Drivetrain` now does (the encoders are not
+   connected); DPAD UP in INIT tries RUN_USING_ENCODER for comparison.
+
+The simulated drive motors have encoders (`DesktopRobot.DRIVE_PLANT`), so Cal 1
+passes here. To see what a fault looks like, set `robot.rearLeft.encoder = null`
+(unplugged) or point it at another motor (crossed cables), as
+`CalibrationRunTest` does. That changes only what the code reads back.
+`RobotSim` still moves the robot from the powers, so the full-power runaway a
+bad encoder causes on the robot is not modelled.
+
 ## The one thing to know before writing a gamepad test
 
 Setting a gamepad field directly does **not** produce a button edge, and in SDK

@@ -191,6 +191,8 @@ public final class RobotView {
     private volatile boolean startSpotRequested;
     private volatile boolean canSetStartingPosition;
     private volatile Point2D.Double requestedStartingPosition;
+    /** A Shift-click: put the robot exactly here, legal start or not. */
+    private volatile Point2D.Double requestedFreePosition;
     private volatile List<OpModeCatalog.Entry> opModes = new ArrayList<OpModeCatalog.Entry>();
     private volatile OpModeCatalog.Entry currentOpMode;
     private volatile Class<? extends OpMode> requestedOpMode;
@@ -246,7 +248,10 @@ public final class RobotView {
                                 showOpModeMenu(e.getPoint());
                                 return;
                             }
-                            requestStartingPosition(e.getX(), e.getY(), panel.getWidth(), panel.getHeight());
+                            Point2D.Double at = fieldPoint(e.getX(), e.getY(), panel.getWidth(), panel.getHeight());
+                            if (at == null || !canSetStartingPosition) return;
+                            if (e.isShiftDown()) requestedFreePosition = at;
+                            else requestedStartingPosition = at;
                         }
                     });
                     frame.setVisible(true);
@@ -399,8 +404,19 @@ public final class RobotView {
         return requested;
     }
 
-    private void requestStartingPosition(int mouseX, int mouseY, int width, int height) {
-        if (!canSetStartingPosition) return;
+    /**
+     * Returns the next Shift-click's field position, or null when none is
+     * pending: somewhere to put the robot that need not be a legal start, such
+     * as open floor for the calibration OpModes.
+     */
+    public Point2D.Double consumeFreePositionRequest() {
+        Point2D.Double requested = requestedFreePosition;
+        requestedFreePosition = null;
+        return requested;
+    }
+
+    /** The field position under the mouse, in inches, or null if it is not over the field. */
+    private static Point2D.Double fieldPoint(int mouseX, int mouseY, int width, int height) {
         int margin = 14;
         int statusHeight = 24;
         int fieldSize = Math.min(height - 2 * margin - statusHeight,
@@ -408,12 +424,12 @@ public final class RobotView {
         int fieldX = margin;
         int fieldY = margin;
         if (fieldSize <= 0 || mouseX < fieldX || mouseX > fieldX + fieldSize
-                || mouseY < fieldY || mouseY > fieldY + fieldSize) return;
+                || mouseY < fieldY || mouseY > fieldY + fieldSize) return null;
 
         double inchesPerPixel = RobotSim.FIELD_INCHES / fieldSize;
         double x = (mouseX - fieldX) * inchesPerPixel;
         double y = RobotSim.FIELD_INCHES - (mouseY - fieldY) * inchesPerPixel;
-        requestedStartingPosition = new Point2D.Double(x, y);
+        return new Point2D.Double(x, y);
     }
 
     /** True once, if the operator asked to restart: back to INIT, robot re-centred. */
