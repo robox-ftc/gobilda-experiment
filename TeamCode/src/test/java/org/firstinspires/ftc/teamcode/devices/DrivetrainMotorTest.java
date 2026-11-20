@@ -71,9 +71,11 @@ public class DrivetrainMotorTest {
     @Test
     public void initLeavesEveryMotorStoppedAndBraked() {
         assertPowers(0, 0, 0, 0);
-        verify(frontLeft).setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        // Not RUN_USING_ENCODER: the encoders are not connected, and without
+        // them the hub would run every motor at full power (Drivetrain).
+        verify(frontLeft).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         verify(frontLeft).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        verify(rearRight).setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        verify(rearRight).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         verify(rearRight).setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
     }
 

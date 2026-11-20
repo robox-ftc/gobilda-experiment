@@ -35,9 +35,10 @@ throws, it stops, and the exception is kept and shown.
 
 `LinearOpMode` is not supported: it runs on its own thread.
 
-`AutoRunTest` drives HiveKnightAuto (`BIOBUZZAuto`) this way. A few of its
-tests pin behaviour that is almost certainly a bug, and say so; flip them when
-the auto is fixed.
+`AutoRunTest` drives HiveKnightAuto (`BIOBUZZAuto`) this way. Its routes are
+timed from the speeds in `BIOBUZZAuto`, which are the test UI's own until the
+robot's are measured, so here each route must end within 1.5 in of its last
+waypoint.
 
 ## Watching it from a gamepad
 

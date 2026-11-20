@@ -22,8 +22,9 @@ import java.util.function.Consumer;
  * Time is the robot's simulated clock, so a 30-second autonomous runs in a few
  * milliseconds and the same way every time.
  *
- * <p>Some of these tests pin behaviour that is almost certainly not what was
- * meant. They say so where they do, and should be flipped when the auto is fixed.
+ * <p>The routes are BIOBUZZAutoOdo's waypoints, timed from the speeds the auto
+ * is given. Those are the test UI's own speeds until the robot's are measured,
+ * so here every route should end on its last waypoint.
  */
 public class AutoRunTest {
 
@@ -73,6 +74,33 @@ public class AutoRunTest {
     private static final Consumer<Gamepad> X = g -> g.x = true;
     private static final Consumer<Gamepad> Y = g -> g.y = true;
     private static final Consumer<Gamepad> RB = g -> g.right_bumper = true;
+    private static final Consumer<Gamepad> LB = g -> g.left_bumper = true;
+
+    /** Where the robot starts, so the Hive routes stay on the field. */
+    private static final double HIVE_START_X = 90, HIVE_START_Y = 20;
+    /** And the Wall routes, which go 100 in right. */
+    private static final double WALL_START_X = 20, WALL_START_Y = 20;
+    /** How close a timed route should end to its last waypoint here, inches. */
+    private static final double ARRIVE_INCHES = 1.5;
+
+    private double startX, startY;
+
+    private void startAt(double x, double y) {
+        startX = x;
+        startY = y;
+        sim.setStartingPose(x, y, 0);
+        robot.resetOdometryOrigin(sim);
+    }
+
+    private double movedRight() { return sim.xInches - startX; }
+    private double movedForward() { return sim.yInches - startY; }
+
+    private void assertAt(double right, double forward, double clockwiseDeg) {
+        assertEquals("right", right, movedRight(), ARRIVE_INCHES);
+        assertEquals("forward", forward, movedForward(), ARRIVE_INCHES);
+        assertEquals("heading", clockwiseDeg, sim.headingDeg, 2);
+        assertNull(runner.failure());
+    }
 
     // ---------------------------------------------------------------------- init
 
@@ -92,95 +120,115 @@ public class AutoRunTest {
     }
 
     @Test
-    public void inDrivetrainOnlyModeTheFirstMoveCrashesTheAuto() {
-        /*
-         * Probably not intended. init() catches the missing intake and carries
-         * on with intake = null, but a TRANSLATE task calls intake.spin(1)
-         * without checking when it finishes. So the fallback the catch exists
-         * for ends in a NullPointerException after the first move.
-         */
+    public void drivetrainOnlyStillDrivesItsRoute() {
         unplug("intake");
-        runner.start();
-        run(1.0);
-
-        assertEquals(OpModeRunner.Phase.STOPPED, runner.phase());
-        assertTrue("was " + runner.failure(), runner.failure() instanceof NullPointerException);
-        assertEquals("it got as far as the end of the first move", 0.5, runner.runSeconds(), 0.05);
-    }
-
-    // --------------------------------------------------------------------- leave
-
-    @Test
-    public void withNothingChosenItLeavesForwardForHalfASecond() {
-        runner.start();
-
-        cycle();
-        assertEquals(0.5, robot.frontLeft.power, 1e-9);
-        assertEquals(-0.5, robot.frontRight.power, 1e-9);
-        assertEquals(0.5, robot.rearLeft.power, 1e-9);
-        assertEquals(-0.5, robot.rearRight.power, 1e-9);
-
-        run(0.6);
-        assertEquals("stopped after the half second", 0.0, robot.frontLeft.power, 1e-9);
-        assertTrue("moved up the field, was " + sim.yInches, sim.yInches > RobotSim.FIELD_INCHES / 2 + 5);
-        assertEquals("not sideways", RobotSim.FIELD_INCHES / 2, sim.xInches, 0.01);
-        assertEquals("not turned", 0.0, sim.headingDeg, 0.01);
-        assertNull(runner.failure());
-    }
-
-    @Test
-    public void theIntakeRunsForOneCycleAfterAMove() {
-        // The TRANSLATE task turns the intake on as it finishes, and the next
-        // loop, with the queue empty, turns it straight off again: one cycle,
-        // which is 20 ms here and one loop time on the robot.
-        runner.start();
-        int cyclesOn = 0;
-        for (int i = 0; i < 100; i++) {
-            cycle();
-            if (robot.intakeFlow() > 0) cyclesOn++;
-        }
-        assertEquals(1, cyclesOn);
-    }
-
-    // ---------------------------------------------------------------------- park
-
-    @Test
-    public void parkFromTheHiveSideGoesForwardAndRight() {
+        startAt(HIVE_START_X, HIVE_START_Y);
         press(A); // Hive side
         press(B); // Park
         runner.start();
-        run(1.5);
+        run(8);
 
-        double dx = sim.xInches - RobotSim.FIELD_INCHES / 2;
-        double dy = sim.yInches - RobotSim.FIELD_INCHES / 2;
-        assertTrue("right, was " + dx, dx > 1);
-        assertTrue("forward, was " + dy, dy > 1);
-        assertTrue("more forward than right (0.5 against 0.28)", dy > dx);
+        assertAt(-36, 76, 0);
+    }
+
+    // ------------------------------------------------------------------ routes
+
+    @Test
+    public void withNothingChosenItLaunchesFromTheHiveSideAndParks() {
+        startAt(HIVE_START_X, HIVE_START_Y);
+        runner.start();
+        run(5.9);
+        assertEquals("still launching", 0, Math.hypot(movedRight(), movedForward()), 0.01);
+        assertTrue("flywheels on", robot.flywheelCommand() > 0);
+
+        run(10);
+        assertAt(-46, 96, 0);
     }
 
     @Test
-    public void parkFromTheWallSideGoesMoreRightThanForward() {
+    public void hiveParkEndsWhereTheOdometryAutoParks() {
+        startAt(HIVE_START_X, HIVE_START_Y);
+        press(A); // Hive side
+        press(B); // Park
+        runner.start();
+
+        cycle();
+        assertTrue("the intake runs while it drives", robot.intakeFlow() > 0);
+        run(8);
+        assertAt(-36, 76, 0);
+        assertEquals("and stops after", 0, robot.intakeFlow(), 1e-9);
+        assertEquals("stopped", 0, robot.frontLeft.power, 1e-9);
+    }
+
+    @Test
+    public void wallParkGoesSixInchesForward() {
+        startAt(WALL_START_X, WALL_START_Y);
         press(B); // Wall side
         press(B); // Park
         runner.start();
-        run(1.5);
+        run(3);
 
-        double dx = sim.xInches - RobotSim.FIELD_INCHES / 2;
-        double dy = sim.yInches - RobotSim.FIELD_INCHES / 2;
-        assertTrue("right, was " + dx, dx > 1);
-        assertTrue("forward, was " + dy, dy > 1);
-        assertTrue("more right than forward (0.5 against 0.28)", dx > dy);
+        assertAt(0, 6, 0);
+    }
+
+    @Test
+    public void wallLaunchTurnsClockwiseToFaceRightThenLaunches() {
+        startAt(WALL_START_X, WALL_START_Y);
+        press(B); // Wall side
+        press(X); // Launch
+        runner.start();
+        run(7.5); // there by about 6.5 s, then launching for 6
+
+        // (0,12), (72,12), (72,36), turn to -90 (clockwise), (100,36) - the last
+        // leg is "forward" for a robot that now faces right.
+        assertAt(100, 36, 90);
+        assertTrue("launching", robot.flywheelCommand() > 0);
+    }
+
+    @Test
+    public void wallLaunchAndParkComesBackAcrossTheField() {
+        startAt(WALL_START_X, WALL_START_Y);
+        press(B); // Wall side
+        press(Y); // LaunchAndPark
+        runner.start();
+        run(20);
+
+        assertAt(0, 6, 90);
+    }
+
+    @Test
+    public void hiveIntakeRouteEndsParked() {
+        startAt(HIVE_START_X, HIVE_START_Y);
+        press(A);  // Hive side
+        press(LB); // Intake
+        runner.start();
+        run(29.9);
+
+        assertAt(-46, 96, 0);
+    }
+
+    @Test
+    public void wallIntakeRouteEndsParked() {
+        startAt(WALL_START_X, WALL_START_Y);
+        press(B);  // Wall side
+        press(LB); // Intake
+        runner.start();
+        run(29.9);
+
+        assertAt(0, 6, 90);
     }
 
     // ------------------------------------------------------------------ choosing
 
     @Test
     public void aModeButtonDoesNothingUntilASideIsChosen() {
+        startAt(HIVE_START_X, HIVE_START_Y);
         press(X); // Launch - but no side has been chosen yet
         runner.start();
-        cycle();
+        run(9);
 
-        assertEquals("Leave: forward at 0.5", 0.5, robot.frontLeft.power, 1e-9);
+        // Still the default, LaunchAndPark: Launch alone would not have moved.
+        assertTrue("drove off after launching, moved " + movedForward(), movedForward() > 5);
     }
 
     @Test
@@ -192,20 +240,14 @@ public class AutoRunTest {
         runner.start();
         cycle();
 
-        assertEquals("full power forward", 1.0, robot.frontLeft.power, 1e-9);
-        assertEquals(-1.0, robot.frontRight.power, 1e-9);
+        assertEquals("forward at the drive power", 0.5, robot.frontLeft.power, 1e-9);
+        assertEquals(-0.5, robot.frontRight.power, 1e-9);
+        assertEquals(0.5, robot.rearLeft.power, 1e-9);
+        assertEquals(-0.5, robot.rearRight.power, 1e-9);
     }
 
     @Test
-    public void aModeChoiceUsuallyNeverReachesTheDriverStation() {
-        /*
-         * init_loop adds "Park is Selected" on the press cycle only. A
-         * telemetry.update() transmits only once 250 ms have passed since the
-         * last transmission and clears the lines either way (TelemetryImpl,
-         * SDK 11.0.0), so the line reaches the Driver Station only if the
-         * press lands on that one cycle - about one cycle in twelve at 50 Hz.
-         * This press does not, so the driver never sees which mode was chosen.
-         */
+    public void theChosenModeIsShownOnTheDriverStation() {
         run(0.1);
         press(A);
         press(B);
@@ -214,53 +256,26 @@ public class AutoRunTest {
             cycle();
             seen |= robot.telemetry.visible().contains("Park is Selected");
         }
-        assertFalse(seen);
+        assertTrue(seen);
     }
 
     // -------------------------------------------------------------------- launch
 
     @Test
-    public void launchNeverRunsTheWheelsOrTheRamp() {
-        /*
-         * Almost certainly not what was meant, for two independent reasons.
-         * Every LAUNCH task is built with target 0, and target is the power
-         * passed to launcher.spin(), so the wheels are told 0. And the task
-         * starts both its timers and, on the very next loop, takes the branch
-         * that removes it - so the branch that would run the ramp is never
-         * reached. It would throw if it were: ramp is never constructed.
-         */
+    public void aLaunchSpinsUpThenFeedsThenStops() {
         press(A); // Hive side
         press(X); // Launch: a single LAUNCH task
         runner.start();
 
-        double maxWheels = 0;
-        double maxRamp = 0;
-        for (int i = 0; i < 500; i++) {
-            cycle();
-            maxWheels = Math.max(maxWheels, Math.abs(robot.flywheelCommand()));
-            maxRamp = Math.max(maxRamp, Math.abs(robot.rampFlow()));
-        }
-        assertEquals(0.0, maxWheels, 1e-9);
-        assertEquals(0.0, maxRamp, 1e-9);
-        assertNull("and nothing crashed", runner.failure());
-    }
-
-    @Test
-    public void wallSideLaunchAndParkTurnsAtFivePercentPower() {
-        /*
-         * The ROTATE task's target is an angle in degrees: the code wraps it
-         * into -180..180 and multiplies it by R = 24/360 to get a power. Launch
-         * on the Wall side passes -90 (full power left). LaunchAndPark passes
-         * -0.75, commented "Motor power", which comes out at -0.05 - a turn too
-         * slow to notice in its one second.
-         */
-        press(B); // Wall side
-        press(Y); // LaunchAndPark: forward 1.5 s, then the rotate
-        runner.start();
-        run(1.6);
-
-        assertEquals(-0.75 * 2 * 12.0 / 360.0, robot.frontLeft.power, 1e-9);
-        assertEquals(-0.05, robot.frontRight.power, 1e-9);
+        run(2.9);
+        assertEquals("spinning up", 0.85, robot.flywheelCommand(), 1e-9);
+        assertEquals("not feeding yet", 0, robot.rampFlow(), 1e-9);
+        run(1.0);
+        assertTrue("feeding", Math.abs(robot.rampFlow()) > 0);
+        run(2.5);
+        assertEquals("done", 0, robot.flywheelCommand(), 1e-9);
+        assertEquals(0, robot.rampFlow(), 1e-9);
+        assertNull(runner.failure());
     }
 
     // ------------------------------------------------------------------- the end
