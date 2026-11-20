@@ -56,6 +56,9 @@ import java.util.Locale;
  * {@code gradlew :TeamCode:gamepadHarness} for a console dashboard. Add
  * {@code --args="--opmode=SomeOpMode"} to choose another OpMode by class name;
  * the default is {@value #DEFAULT_OPMODE}, the one OpMode this branch registers.
+ * {@code --pinpoint=x-reversed,drift=4} fits the simulated Pinpoint the way the
+ * real one is (see {@link SimPinpoint.Mounting#parse}); the default is a
+ * Pinpoint fitted the way the code assumes.
  * Not from the gutter next to {@link #main}: that route asks Gradle for a Java
  * source set an Android module does not have. See src/test/README.md.
  *
@@ -76,6 +79,9 @@ public final class GamepadHarness {
 
     private static final long CYCLE_MS = 20; // 50 Hz, about the robot's loop rate
 
+    /** How the simulated Pinpoint is fitted, from {@code --pinpoint=}. */
+    private static SimPinpoint.Mounting pinpointMounting = new SimPinpoint.Mounting();
+
     public static void main(String[] args) {
         boolean probeOnly = false;
         boolean rawOnly = false;
@@ -86,6 +92,14 @@ public final class GamepadHarness {
             else if (arg.equals("--raw")) rawOnly = true;
             else if (arg.equals("--gui")) gui = true;
             else if (arg.startsWith("--opmode=")) opModeName = arg.substring("--opmode=".length());
+            else if (arg.startsWith("--pinpoint=")) {
+                try {
+                    pinpointMounting = SimPinpoint.Mounting.parse(arg.substring("--pinpoint=".length()));
+                } catch (IllegalArgumentException e) {
+                    System.err.println(e.getMessage());
+                    System.exit(1);
+                }
+            }
         }
 
         Class<? extends OpMode> type = null;
@@ -153,6 +167,7 @@ public final class GamepadHarness {
      */
     private static DesktopRobot placedRobot(RobotSim sim, FieldSim field) {
         DesktopRobot robot = new DesktopRobot();
+        robot.odometry.mounting = pinpointMounting.copy();
         field.placeRobot(sim);
         robot.resetOdometryOrigin(sim);
         robot.updateOdometry(sim);
@@ -313,6 +328,7 @@ public final class GamepadHarness {
 
         System.out.println();
         System.out.println("Window open, running " + runner.name() + " on stand-in motors.");
+        System.out.println("Pinpoint: " + pinpointMounting + ".");
         System.out.println("Choose options on the pad, then START (or S) runs it.");
         System.out.println("R restarts. O, or clicking the OpMode name, picks another OpMode.");
         System.out.println("P, or clicking the field, in INIT moves the robot to a legal start spot.");

@@ -138,8 +138,16 @@ them first and the OpMode would never see the press.
 ## What is not covered, and why
 
 - **`LinearOpMode`s**, which run on their own thread.
-- **The camera and the Pinpoint.** `VisionPortal` cannot be constructed off the
-  robot, and there is no stand-in odometry; an OpMode that needs either is
-  missing that device here.
+- **The camera.** `VisionPortal` cannot be constructed off the robot; `SimVision`
+  stands in for the AprilTag detections.
+- **Whether the Pinpoint is fitted the way the code says.** `SimPinpoint` models
+  the pods and the gyro, so a wrong `setEncoderDirections`, wrong `setOffsets`,
+  gyro drift or a robot moved while the gyro calibrates all misbehave here as
+  they do on the robot - but only if `SimPinpoint.Mounting` describes the real
+  robot. The default is a Pinpoint fitted the way `PinpointSetup` says - on
+  this robot, mirrored. To try one that differs from the code, run the GUI with
+  e.g. `gradlew :TeamCode:gamepadGui --args="--gui --pinpoint=x-reversed,drift=4"`
+  (`x-reversed` / `y-reversed`: the forward / sideways pod counts the other way;
+  `mirrored`, `not-mirrored`, `drift=<deg/s>`, `xpod=<in left>`, `ypod=<in forward>`).
 - **Anything about the physical robot**: whether a power moves the robot,
   whether the launcher reaches speed, whether a ball feeds.
