@@ -14,6 +14,17 @@ import java.util.Arrays;
 
 public class Drivetrain {
 
+    /*
+     * The drive motors' encoder cables are not connected on this robot
+     * (found with "Cal 1: Drive Motors" on 2026-11-19). In RUN_USING_ENCODER
+     * the hub then sees no speed at all and drives every motor at full power,
+     * whatever it is asked: a 0.3-power strafe meant to go 12 in went most of
+     * the way to the wall. RUN_WITHOUT_ENCODER makes a power a fraction of the
+     * battery voltage instead, so 0.3 really is about 30% speed. Switch back
+     * to RUN_USING_ENCODER only once Cal 1 says all four encoders are OK.
+     */
+    public static final DcMotor.RunMode DRIVE_RUN_MODE = DcMotor.RunMode.RUN_WITHOUT_ENCODER;
+
     // Declare OpMode members.
     private DcMotorEx frontLeftDrive = null;
     private DcMotorEx frontRightDrive = null;
@@ -36,7 +47,7 @@ public class Drivetrain {
         driveMotors[1] = frontRightDrive;
         driveMotors[2] = rearRightDrive;
         driveMotors[3] = rearLeftDrive;
-        applyAction(driveMotors, (motor) -> motor.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER));
+        applyAction(driveMotors, (motor) -> motor.setMode(DRIVE_RUN_MODE));
         applyAction(driveMotors, (motor) -> motor.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE));
         applyAction(driveMotors, (motor) -> motor.setPower(0.0));
     }
