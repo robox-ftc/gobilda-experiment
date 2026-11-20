@@ -112,6 +112,12 @@ public final class GamepadHarness {
             }
         }
 
+        // On a Mac, run the window as an app macOS starts, or it opens behind
+        // whatever started Gradle and never gets the keyboard (MacAppLauncher).
+        if (gui && !probeOnly && !rawOnly && MacAppLauncher.shouldRelaunch() && MacAppLauncher.relaunch()) {
+            System.exit(0);
+        }
+
         RobotView guiView = null;
         if (gui && !probeOnly && !rawOnly) {
             guiView = new RobotView();

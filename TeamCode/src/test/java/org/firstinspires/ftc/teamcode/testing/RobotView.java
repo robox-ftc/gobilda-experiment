@@ -255,6 +255,8 @@ public final class RobotView {
                         }
                     });
                     frame.setVisible(true);
+                    // On a Mac these only work because MacAppLauncher had macOS
+                    // start this as an app; a background process is ignored.
                     frame.toFront();
                     frame.requestFocus();
                     panel.requestFocusInWindow();
