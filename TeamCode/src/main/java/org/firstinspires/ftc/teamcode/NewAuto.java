@@ -31,12 +31,21 @@ public class NewAuto extends OpMode {
         SHOOT,
         INTAKE
     }
-    private static final double TOLERANCE = 1; // Arbitrary
+    private static final double TOLERANCE = 1; // inches, checked per axis
     private static final int THRESHOLD = 10000; // Milliseconds before it checks the camera
     private static final double RTOLERANCE = 5; // Arbitrary
 
+    // Flip to 1 or -1 if that axis drives away from its target
+    private static final double X_DIR = -1.0;
+    private static final double Y_DIR = 1.0;
+    // Below this power the robot doesn't move (strafing needs more than driving forward)
+    private static final double MIN_POWER_X = 0.15;
+    private static final double MIN_POWER_Y = 0.08;
+    private static final double MAX_POWER = 0.3;
+
     // Tunable P
-    private final double P = 1.0 / 100.0; // tuned so 100 inches away would lead to 100 percent power
+    private final double P = 1.0 / 100.0; // used by ROTATE via clamp()
+    private final double DRIVE_P = 1.0 / 20.0; // 20 inches away -> MAX_POWER cap
     // Rotation Factor
     private final double R = 2 * 12.0 / 360.0;
     private boolean color = true; // default blue
@@ -52,6 +61,7 @@ public class NewAuto extends OpMode {
     private DrivetrainControls controls;
     private Queue<Task> queue;
     private ElapsedTime timer;
+    private String lastTranslateResult = "-";
     private final Set<Integer> redID = new HashSet<>();
     private final Set<Integer> blueID = new HashSet<>();
 
@@ -161,16 +171,18 @@ public class NewAuto extends OpMode {
                 queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -10));
                 break;
             case SHOOT:
-                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 7)); // 7 inches forward
-                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.7, 2));
-                queue.add(new Task(6500, 7500, Task.Type.TRANSLATE, -15, 15)); // -20, 15 is 25 inches left and 15 inches forward
-                queue.add(new Task(9000, 10000, Task.Type.TRANSLATE, -10, 65)); // -30, 70 is 35 inches left and 70 inches forward
-                queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, -25, 70)); // -35, 70 is 45 inches left and 70 inches forward
-                queue.add(new Task(14000, 15000, Task.Type.TRANSLATE, -30, 70)); // -40, 70 is 50 inches left and 70 inches forward
+//                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 7)); // 7 inches forward
+//                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.65, 2));
+                queue.add(new Task(2500, 10000, Task.Type.TRANSLATE, -10, 7)); // -20, 15 is 25 inches left and 15 inches forward
+//                queue.add(new Task(6500, 9000, Task.Type.TRANSLATE, -10, 7)); // -20, 15 is 25 inches left and 15 inches forward
+//                queue.add(new Task(9500, 15000, Task.Type.TRANSLATE, -20, 30)); // -30, 70 is 35 inches left and 70 inches forward
+//                queue.add(new Task(11500, 13000, Task.Type.TRANSLATE, -20, 50)); // -35, 70 is 45 inches left and 70 inches forward
+//                queue.add(new Task(13500, 15000, Task.Type.TRANSLATE, -20, 60)); // -35, 70 is 45 inches left and 70 inches forward
+//                queue.add(new Task(15500, 17000, Task.Type.TRANSLATE, -35, 60)); // -40, 70 is 50 inches left and 70 inches forward
                 break;
             case INTAKE:
                 queue.add(new Task(0, 1000, Task.Type.TRANSLATE, 0, 7)); // 10 inches forward
-                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.7, 2));
+                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.65, 2));
                 queue.add(new Task(6500, 7500, Task.Type.TRANSLATE, -30, -5));
                 queue.add(new Task(8500, 9500, Task.Type.TRANSLATE, 5, -5));
                 queue.add(new Task(10000, 15000, Task.Type.LAUNCH, 0.7, 2));
@@ -192,7 +204,7 @@ public class NewAuto extends OpMode {
         controls.rotationPower = 0;
 
         pinpoint.update();
-        double x = pinpoint.getPosX(DistanceUnit.INCH);
+        double x = -pinpoint.getPosX(DistanceUnit.INCH);
         double y = pinpoint.getPosY(DistanceUnit.INCH);
         double heading = pinpoint.getHeading(AngleUnit.DEGREES);
 
@@ -203,14 +215,18 @@ public class NewAuto extends OpMode {
                     case TRANSLATE:
                         double errorX = x + task.target; // Corrected logic
                         double errorY = y + task.target2;
-                        // square distance, unlikely it'll reach the end of the task
-                        if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
+                        boolean arrived = Math.abs(errorX) <= TOLERANCE && Math.abs(errorY) <= TOLERANCE;
+                        boolean timedOut = timer.milliseconds() > task.end;
+                        telemetry.addData("Error X", errorX);
+                        telemetry.addData("Error Y", errorY);
+                        if (arrived || timedOut) {
+                            lastTranslateResult = (arrived ? "ARRIVED" : "TIMEOUT") + " at " + (int) timer.milliseconds() + "ms";
                             controls.translationXPower = 0;
                             controls.translationYPower = 0;
                             queue.remove();
                         } else {
-                            controls.translationXPower = clamp(errorX);
-                            controls.translationYPower = clamp(errorY);
+                            controls.translationXPower = X_DIR * drivePower(errorX, MIN_POWER_X);
+                            controls.translationYPower = Y_DIR * drivePower(errorY, MIN_POWER_Y);
                         }
                         if (intake != null) {
                             intake.spin(1);
@@ -290,6 +306,8 @@ public class NewAuto extends OpMode {
         telemetry.addData("Current Y", y);
         telemetry.addData("Current Heading", heading);
         telemetry.addData("Remaining Tasks", queue.size());
+        telemetry.addData("Last Translate", lastTranslateResult);
+        telemetry.addData("Pinpoint Status", pinpoint.getDeviceStatus());
         telemetry.update();
     }
 
@@ -304,7 +322,13 @@ public class NewAuto extends OpMode {
         }
     }
 
+    private double drivePower(double error, double minPower) {
+        if (Math.abs(error) <= TOLERANCE) return 0;
+        double magnitude = Math.min(Math.max(Math.abs(error * DRIVE_P), minPower), MAX_POWER);
+        return Math.copySign(magnitude, error);
+    }
+
     private double clamp(double error) {
-        return Math.min(Math.max(error * P, -0.5), 0.5);
+        return Math.min(Math.max(error * P, -0.1), 0.1);
     }
 }
