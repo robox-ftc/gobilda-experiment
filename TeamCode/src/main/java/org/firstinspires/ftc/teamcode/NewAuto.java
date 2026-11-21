@@ -37,7 +37,8 @@ public class NewAuto extends OpMode {
 
     // Flip to 1 or -1 if that axis drives away from its target
     private static final double X_DIR = 1.0;
-    private static final double Y_DIR = -1.0;
+    // Drivetrain: translationYPower > 0 = forward (same as TeleOp -leftStickY); readY() is + forward
+    private static final double Y_DIR = 1.0;
     // Below this power the robot doesn't move (strafing needs more than driving forward)
     private static final double MIN_POWER_X = 0.15;
     private static final double MIN_POWER_Y = 0.08;
@@ -270,10 +271,19 @@ public class NewAuto extends OpMode {
                                 robotRight = errorX * Math.cos(h) + errorY * Math.sin(h);
                                 robotForward = -errorX * Math.sin(h) + errorY * Math.cos(h);
                             }
-                            controls.translationXPower = X_DIR * drivePower(robotRight, MIN_POWER_X);
-                            controls.translationYPower = Y_DIR * drivePower(robotForward, MIN_POWER_Y);
-                            // TEST: no heading hold — restore headingErr * HEADING_P block after this run
-                            controls.rotationPower = 0;
+                            // Scale both axes together so the path is a straight line to the target
+                            // (clamping each axis separately turns (-10, 7) into a 45-degree diagonal that yaws)
+                            double rawRight = robotRight * DRIVE_P;
+                            double rawForward = robotForward * DRIVE_P;
+                            double peak = Math.max(Math.abs(rawRight), Math.abs(rawForward));
+                            double scale = peak > MAX_POWER ? MAX_POWER / peak : 1.0;
+                            controls.translationXPower = X_DIR * axisPower(robotRight, rawRight * scale, MIN_POWER_X);
+                            controls.translationYPower = Y_DIR * axisPower(robotForward, rawForward * scale, MIN_POWER_Y);
+                            // Heading hold: rotationPower > 0 turns clockwise, heading is CCW+,
+                            // so a CCW drift (headingDrift > 0) gets a positive (clockwise) correction.
+                            // If the body spins faster instead, flip H_DIR.
+                            controls.rotationPower = H_DIR * Math.min(
+                                    Math.max(headingDrift * HEADING_P, -MAX_ROTATION_POWER), MAX_ROTATION_POWER);
                         }
                         if (intake != null) {
                             intake.spin(1);
@@ -381,6 +391,12 @@ public class NewAuto extends OpMode {
     private double readHeading() { // + counter-clockwise
         double heading = pinpoint.getHeading(AngleUnit.DEGREES);
         return PINPOINT_UPSIDE_DOWN ? -heading : heading;
+    }
+
+    // Power for one axis: 0 inside tolerance, otherwise at least minPower (to overcome friction)
+    private double axisPower(double error, double power, double minPower) {
+        if (Math.abs(error) <= TOLERANCE) return 0;
+        return Math.copySign(Math.max(Math.abs(power), minPower), error);
     }
 
     private double drivePower(double error, double minPower) {
