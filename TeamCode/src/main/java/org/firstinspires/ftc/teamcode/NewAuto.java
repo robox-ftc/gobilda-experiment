@@ -48,14 +48,6 @@ public class NewAuto extends OpMode {
     // Pinpoint pod offsets (inches). Tune with the spin-in-place tool in init_loop (press LB to start/stop)
     private static final double OFFSET_X_IN = 0;
     private static final double OFFSET_Y_IN = 0;
-    // Heading hold during TRANSLATE; flip H_DIR if the robot spins faster instead of straightening
-    // Tested on robot: H_DIR = 1.0 spun the body ~88 deg during SHOOT (positive feedback), so use -1.0
-    private static final double H_DIR = -1.0;
-    private static final double HEADING_P = 0.01; // power per degree
-    private static final double MAX_ROTATION_POWER = 0.2;
-    // Below this |heading - hold|, drive in field X/Y without rotating the error vector
-    private static final double FIELD_DRIVE_HEADING_DEG = 5;
-
     // Tunable P
     private final double P = 1.0 / 100.0; // used by ROTATE via clamp()
     private final double DRIVE_P = 1.0 / 20.0; // 20 inches away -> MAX_POWER cap
@@ -75,8 +67,6 @@ public class NewAuto extends OpMode {
     private Queue<Task> queue;
     private ElapsedTime timer;
     private String lastTranslateResult = "-";
-    private Task translateCaptureTask = null;
-    private double translateHeadingHold = 0;
     // Offset calibration (init_loop): spin the robot in place by hand
     private boolean calRunning = false;
     private double calLastX, calLastY, calLastHeading;
@@ -255,53 +245,27 @@ public class NewAuto extends OpMode {
             if (timer.milliseconds() >= task.begin) {
                 switch (task.type) {
                     case TRANSLATE:
-                        if (translateCaptureTask != task) {
-                            translateCaptureTask = task;
-                            translateHeadingHold = heading;
-                        }
                         double errorX = task.target - x;
                         double errorY = task.target2 - y;
-                        double headingDrift = heading - translateHeadingHold;
-                        while (headingDrift > 180) headingDrift -= 360;
-                        while (headingDrift < -180) headingDrift += 360;
-                        double headingErr = translateHeadingHold - heading;
-                        while (headingErr > 180) headingErr -= 360;
-                        while (headingErr < -180) headingErr += 360;
                         boolean arrived = Math.abs(errorX) <= TOLERANCE && Math.abs(errorY) <= TOLERANCE;
                         boolean timedOut = timer.milliseconds() > task.end;
                         telemetry.addData("Error X", errorX);
                         telemetry.addData("Error Y", errorY);
-                        telemetry.addData("Heading hold", translateHeadingHold);
-                        telemetry.addData("Heading err", headingErr);
                         if (arrived || timedOut) {
                             lastTranslateResult = (arrived ? "ARRIVED" : "TIMEOUT") + " at " + (int) timer.milliseconds() + "ms";
-                            translateCaptureTask = null;
                             controls.translationXPower = 0;
                             controls.translationYPower = 0;
                             queue.remove();
                         } else {
-                            double robotRight;
-                            double robotForward;
-                            if (Math.abs(headingDrift) <= FIELD_DRIVE_HEADING_DEG) {
-                                robotRight = errorX;
-                                robotForward = errorY;
-                            } else {
-                                double h = Math.toRadians(headingDrift);
-                                robotRight = errorX * Math.cos(h) + errorY * Math.sin(h);
-                                robotForward = -errorX * Math.sin(h) + errorY * Math.cos(h);
-                            }
+                            // No heading control: drive on the field error directly (robot is not expected to turn)
                             // Scale both axes together so the path is a straight line to the target
-                            // (clamping each axis separately turns (-10, 7) into a 45-degree diagonal that yaws)
-                            double rawRight = robotRight * DRIVE_P;
-                            double rawForward = robotForward * DRIVE_P;
+                            double rawRight = errorX * DRIVE_P;
+                            double rawForward = errorY * DRIVE_P;
                             double peak = Math.max(Math.abs(rawRight), Math.abs(rawForward));
                             double scale = peak > MAX_POWER ? MAX_POWER / peak : 1.0;
-                            controls.translationXPower = X_DIR * axisPower(robotRight, rawRight * scale, MIN_POWER_X);
-                            controls.translationYPower = Y_DIR * axisPower(robotForward, rawForward * scale, MIN_POWER_Y);
-                            // Heading hold: negative feedback on headingDrift. The sign is set by H_DIR and was
-                            // found on the robot; if the body spins faster instead, flip H_DIR.
-                            controls.rotationPower = H_DIR * Math.min(
-                                    Math.max(headingDrift * HEADING_P, -MAX_ROTATION_POWER), MAX_ROTATION_POWER);
+                            controls.translationXPower = X_DIR * axisPower(errorX, rawRight * scale, MIN_POWER_X);
+                            controls.translationYPower = Y_DIR * axisPower(errorY, rawForward * scale, MIN_POWER_Y);
+                            controls.rotationPower = 0;
                         }
                         if (intake != null) {
                             intake.spin(1);
