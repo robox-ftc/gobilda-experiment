@@ -46,8 +46,8 @@ public class NewAuto extends OpMode {
     // Set true if turning the robot counter-clockwise (seen from above) makes the raw Pinpoint heading go negative
     private static final boolean PINPOINT_UPSIDE_DOWN = true;
     // Pinpoint pod offsets (inches). Tune with the spin-in-place tool in init_loop (press LB to start/stop)
-    private static final double OFFSET_X_IN = -5;
-    private static final double OFFSET_Y_IN = 5;
+    private static final double OFFSET_X_IN = 0;
+    private static final double OFFSET_Y_IN = 0;
     // Heading hold during TRANSLATE; flip H_DIR if the robot spins faster instead of straightening
     private static final double H_DIR = 1.0;
     private static final double HEADING_P = 0.01; // power per degree
