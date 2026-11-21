@@ -49,7 +49,8 @@ public class NewAuto extends OpMode {
     private static final double OFFSET_X_IN = 0;
     private static final double OFFSET_Y_IN = 0;
     // Heading hold during TRANSLATE; flip H_DIR if the robot spins faster instead of straightening
-    private static final double H_DIR = 1.0;
+    // Tested on robot: H_DIR = 1.0 spun the body ~88 deg during SHOOT (positive feedback), so use -1.0
+    private static final double H_DIR = -1.0;
     private static final double HEADING_P = 0.01; // power per degree
     private static final double MAX_ROTATION_POWER = 0.2;
     // Below this |heading - hold|, drive in field X/Y without rotating the error vector
@@ -148,6 +149,8 @@ public class NewAuto extends OpMode {
         telemetry.addData("Raw Heading (CCW should be +)", pinpoint.getHeading(AngleUnit.DEGREES));
         telemetry.addData("X (right +)", readX());
         telemetry.addData("Y (forward +)", readY());
+        telemetry.addData("Heading (CCW +)", readHeading());
+        telemetry.addData("Pinpoint Status", pinpoint.getDeviceStatus());
         // Offset calibration: LB = start, spin the robot in place by hand (>= 2 turns), LB = stop
         double calHeading = readHeading();
         trackCalibration(readX(), readY(), calHeading);
@@ -295,9 +298,8 @@ public class NewAuto extends OpMode {
                             double scale = peak > MAX_POWER ? MAX_POWER / peak : 1.0;
                             controls.translationXPower = X_DIR * axisPower(robotRight, rawRight * scale, MIN_POWER_X);
                             controls.translationYPower = Y_DIR * axisPower(robotForward, rawForward * scale, MIN_POWER_Y);
-                            // Heading hold: rotationPower > 0 turns clockwise, heading is CCW+,
-                            // so a CCW drift (headingDrift > 0) gets a positive (clockwise) correction.
-                            // If the body spins faster instead, flip H_DIR.
+                            // Heading hold: negative feedback on headingDrift. The sign is set by H_DIR and was
+                            // found on the robot; if the body spins faster instead, flip H_DIR.
                             controls.rotationPower = H_DIR * Math.min(
                                     Math.max(headingDrift * HEADING_P, -MAX_ROTATION_POWER), MAX_ROTATION_POWER);
                         }
