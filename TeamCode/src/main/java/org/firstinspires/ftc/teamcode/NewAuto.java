@@ -45,6 +45,9 @@ public class NewAuto extends OpMode {
     private static final double MAX_POWER = 0.3;
     // Set true if turning the robot counter-clockwise (seen from above) makes the raw Pinpoint heading go negative
     private static final boolean PINPOINT_UPSIDE_DOWN = true;
+    // Pinpoint pod offsets (inches). Tune with the spin-in-place tool in init_loop (press LB to start/stop)
+    private static final double OFFSET_X_IN = -5;
+    private static final double OFFSET_Y_IN = 5;
     // Heading hold during TRANSLATE; flip H_DIR if the robot spins faster instead of straightening
     private static final double H_DIR = 1.0;
     private static final double HEADING_P = 0.01; // power per degree
@@ -73,6 +76,11 @@ public class NewAuto extends OpMode {
     private String lastTranslateResult = "-";
     private Task translateCaptureTask = null;
     private double translateHeadingHold = 0;
+    // Offset calibration (init_loop): spin the robot in place by hand
+    private boolean calRunning = false;
+    private double calLastX, calLastY, calLastHeading;
+    private double calSumRight, calSumForward, calSumAbsRad;
+    private String calResult = "-";
     private final Set<Integer> redID = new HashSet<>();
     private final Set<Integer> blueID = new HashSet<>();
 
@@ -89,7 +97,7 @@ public class NewAuto extends OpMode {
         telemetry.addLine("Drivetrain initialized");
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
         pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        pinpoint.setOffsets(-5, 5, DistanceUnit.INCH);
+        pinpoint.setOffsets(OFFSET_X_IN, OFFSET_Y_IN, DistanceUnit.INCH);
         // Raw pods read +right (X port) and +backward (Y port). With a right-side-up Pinpoint (heading CCW+)
         // reverse Y to get +right / +forward. An upside-down Pinpoint (heading CW+) needs the raw mirrored frame.
         pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD,
@@ -140,6 +148,14 @@ public class NewAuto extends OpMode {
         telemetry.addData("Raw Heading (CCW should be +)", pinpoint.getHeading(AngleUnit.DEGREES));
         telemetry.addData("X (right +)", readX());
         telemetry.addData("Y (forward +)", readY());
+        // Offset calibration: LB = start, spin the robot in place by hand (>= 2 turns), LB = stop
+        double calHeading = readHeading();
+        trackCalibration(readX(), readY(), calHeading);
+        if (gamepad1.leftBumperWasPressed() || gamepad2.leftBumperWasPressed()) {
+            toggleCalibration(readX(), readY(), calHeading);
+        }
+        telemetry.addData("Offsets in use (in)", "X=" + OFFSET_X_IN + " Y=" + OFFSET_Y_IN);
+        telemetry.addData("Offset cal (LB start/stop)", calRunning ? "RUNNING: " + calSummary() : calResult);
         if (gamepad1.rightBumperWasPressed() || gamepad2.rightBumperWasPressed()) {
             pinpoint.resetPosAndIMU();
         }
@@ -366,6 +382,55 @@ public class NewAuto extends OpMode {
         telemetry.addData("Last Translate", lastTranslateResult);
         telemetry.addData("Pinpoint Status", pinpoint.getDeviceStatus());
         telemetry.update();
+    }
+
+    private void toggleCalibration(double x, double y, double heading) {
+        if (!calRunning) {
+            calRunning = true;
+            calLastX = x;
+            calLastY = y;
+            calLastHeading = heading;
+            calSumRight = 0;
+            calSumForward = 0;
+            calSumAbsRad = 0;
+            calResult = "running...";
+        } else {
+            calRunning = false;
+            calResult = calSummary();
+        }
+    }
+
+    // While the robot is spun in place, a wrong offset makes the pods report a fake translation that is
+    // constant in the ROBOT frame and proportional to the rotation. Convert each step's field delta to the
+    // robot frame and divide by the rotation: the result (inches per radian) is the offset error.
+    private void trackCalibration(double x, double y, double heading) {
+        if (!calRunning) return;
+        double dTheta = heading - calLastHeading;
+        while (dTheta > 180) dTheta -= 360;
+        while (dTheta < -180) dTheta += 360;
+        double dThetaRad = Math.toRadians(dTheta);
+        if (Math.abs(dThetaRad) < 0.002) return; // wait until it has turned enough (also skips noise)
+        double dx = x - calLastX;
+        double dy = y - calLastY;
+        double hMid = Math.toRadians(calLastHeading + dTheta / 2);
+        double right = dx * Math.cos(hMid) + dy * Math.sin(hMid);
+        double forward = -dx * Math.sin(hMid) + dy * Math.cos(hMid);
+        double sign = Math.signum(dThetaRad);
+        calSumRight += right * sign;
+        calSumForward += forward * sign;
+        calSumAbsRad += Math.abs(dThetaRad);
+        calLastX = x;
+        calLastY = y;
+        calLastHeading = heading;
+    }
+
+    private String calSummary() {
+        double turns = calSumAbsRad / (2 * Math.PI);
+        if (turns < 0.5) {
+            return String.format(Locale.US, "turn more (%.2f turns so far)", turns);
+        }
+        return String.format(Locale.US, "%.1f turns | residual right=%.2f in, forward=%.2f in (want ~0)",
+                turns, calSumRight / calSumAbsRad, calSumForward / calSumAbsRad);
     }
 
     private int launcherPhase(Task task, double time) {
