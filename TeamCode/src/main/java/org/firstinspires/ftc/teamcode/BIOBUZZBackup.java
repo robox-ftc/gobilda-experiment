@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode;
 //import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -53,6 +55,14 @@ public class BIOBUZZBackup extends OpMode {
     @Override
     public void init() {
         drivetrain = new Drivetrain(hardwareMap, telemetry, false);
+        // The drive encoders are not connected. Drivetrain sets RUN_USING_ENCODER,
+        // in which the hub sees no speed and drives every motor at full power
+        // whatever it is asked. This auto's times were tuned with
+        // RUN_WITHOUT_ENCODER (power = a fraction of battery voltage), so set
+        // that here, for this OpMode only.
+        for (String name : new String[]{"lf", "rf", "lb", "rb"}) {
+            hardwareMap.get(DcMotorEx.class, name).setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        }
         controls = new DrivetrainControls();
         telemetry.addLine("Drivetrain initialized");
 //        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
