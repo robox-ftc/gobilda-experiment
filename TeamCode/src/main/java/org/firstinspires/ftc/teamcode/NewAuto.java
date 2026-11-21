@@ -201,7 +201,7 @@ public class NewAuto extends OpMode {
             if (timer.milliseconds() >= task.begin) {
                 switch (task.type) {
                     case TRANSLATE:
-                        double errorX = x + task.target; // Corrected logic
+                        double errorX = task.target - x; // Corrected logic
                         double errorY = y + task.target2;
                         // square distance, unlikely it'll reach the end of the task
                         if (Math.hypot(errorX, errorY) <= TOLERANCE || timer.milliseconds() > task.end) {
