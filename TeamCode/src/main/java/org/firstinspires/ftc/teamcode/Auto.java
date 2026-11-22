@@ -110,17 +110,18 @@ public class Auto extends OpMode {
     public void start() {
         switch (mode) {
             case LEAVE:
-                queue.add(new Task(1000, 1500, Task.Type.TRANSLATE, 0, 0.2));
+                queue.add(new Task(1000, 1500, Task.Type.TRANSLATE, 0, 0.1));
                 break;
             case PARK:
-                queue.add(new Task(1000, 1500, Task.Type.TRANSLATE, 0, 0.2));
-                queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -0.35));
+                queue.add(new Task(1000, 1750, Task.Type.TRANSLATE, 0, 0.07));
+                queue.add(new Task(11000, 12000, Task.Type.TRANSLATE, 0, -0.05));
                 break;
             case SHOOT:
-                queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.77, 2));
-                queue.add(new Task(5500, 6500, Task.Type.TRANSLATE, -0.1, 0));
-                // tuned to specific speed
-                //queue.add(new Task(7000, 9000, Task.Type.TRANSLATE, 0, 0.1));
+                queue.add(new Task(0, 1000, Task.Type.TRANSLATE, -0.05, 0));
+                queue.add(new Task(1000, 6000, Task.Type.LAUNCH, 0.7, 2));
+                queue.add(new Task(6500, 7250, Task.Type.TRANSLATE, -0.1, 0));
+                queue.add(new Task(7500, 9250, Task.Type.TRANSLATE, 0, 0.1));
+                queue.add(new Task(9500, 10000, Task.Type.TRANSLATE, -0.1, 0));
                 break;
             case INTAKE:
                 queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.77, 2));
@@ -133,22 +134,7 @@ public class Auto extends OpMode {
                 queue.add(new Task(15500, 16500, Task.Type.TRANSLATE, -1, 0.75));
                 queue.add(new Task(17000, 18500, Task.Type.TRANSLATE, 0, 1));
                 break;
-
         }
-//        if (stay) {
-//            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
-//        } else if (near) {
-//            // no ROTATE immediately before LAUNCH
-//            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 0.75, 3));
-//            queue.add(new Task(5000, 5500, Task.Type.TRANSLATE, 0, -12));
-//            queue.add(new Task(10000, 10500, Task.Type.TRANSLATE, -12, -24));
-//            queue.add(new Task(12000, 12500, Task.Type.TRANSLATE, -15, -28));
-//            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -14, -26));
-//        } else {
-//            queue.add(new Task(0, 5000, Task.Type.LAUNCH, 1, 3));
-//            queue.add(new Task(10000, 11000, Task.Type.TRANSLATE, -12, 6));
-//            queue.add(new Task(20000, 21000, Task.Type.TRANSLATE, -18, 12));
-//        }
         timer.reset();
     }
 

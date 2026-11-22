@@ -126,7 +126,7 @@ public class Turret {
             // SDK 12: IDs are on single-tag detections; clusters have none.
             if (!(detection instanceof AprilTagSingleDetection)) continue;
             AprilTagSingleDetection single = (AprilTagSingleDetection) detection;
-            if (single.metadata != null && single.id == targetId) {
+            if (single.id == targetId) {
                 return single;
             }
         }

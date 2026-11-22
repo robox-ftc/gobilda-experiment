@@ -38,7 +38,7 @@ public class LauncherControls {
         } else {
             controls.wheelPower *= TARGET_FRACTION;
         }
-        if (newReadings.aButton) {
+        if (newReadings.xButton) {
             controls.rampPower = 1;
         }
         return controls;

@@ -37,6 +37,8 @@ public class TeleOp extends OpMode {
     private final double TOLERANCE = 0.05;
     private final double SHOOTING_FRACTION = 0.5; // a bit lower
     private boolean color = true; // true: blue, false: red
+    private int padOneDirection = 1;
+    private int padTwoDirection = 1;
     /*
      * Code to run ONCE when the driver hits INIT
      */
@@ -75,8 +77,8 @@ public class TeleOp extends OpMode {
                     .setDrawCubeProjection(true)
                     .setDrawTagOutline(true)
                     .setCameraPose(
-                            new Position(DistanceUnit.INCH, 6, 7, 14, time),
-                            new YawPitchRollAngles(AngleUnit.DEGREES, 0, 15, 0, time))
+                            new Position(DistanceUnit.INCH, 0, 5, 14, time),
+                            new YawPitchRollAngles(AngleUnit.DEGREES, 0, 45, 0, time))
                     .build();
             visionPortal = new VisionPortal.Builder()
                     .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
@@ -126,10 +128,46 @@ public class TeleOp extends OpMode {
             heading = pinpoint.getHeading(AngleUnit.DEGREES);
             pinpoint.update();
         } catch (Exception ignored) {}
-        double x = getLocation();
+        double d = getLocation(true);
+        double a = getLocation(false);
         DrivetrainControls driveControls = DrivetrainControls.readControls(gamePadReading);
         LauncherControls launcherControls = LauncherControls.readControls(gamePadReading);
         double intakePower = gamePadReading.bButton ? -0.5 : gamePadReading.rightTrigger;
+        if (gamePadReading.backWasPressed) {
+            try {
+                pinpoint.resetPosAndIMU();
+            } catch (Exception ignored) {}
+        }
+        if (gamePadReading.yButton) {
+            try {
+                driveControls.translationXPower = clamp(d * TOLERANCE);
+            } catch (Exception ignored) {}
+        }
+        if (gamePadReading.aButton) {
+            try {
+                driveControls.rotationPower = -clamp(a * TOLERANCE);
+            } catch (Exception ignored) {}
+        }
+        if (gamePadReading.dPadUp) {
+            try {
+                driveControls.rotationPower = -clamp(angle(heading) * TOLERANCE);
+            } catch (Exception ignored) {}
+        }
+        if (gamePadReading.dPadRight) {
+            try {
+                driveControls.rotationPower = clamp(angle(90 - heading) * TOLERANCE);
+            } catch (Exception ignored) {}
+        }
+        if (gamePadReading.dPadDown) {
+            try {
+                driveControls.rotationPower = clamp(angle(180 - heading) * TOLERANCE);
+            } catch (Exception ignored) {}
+        }
+        if (gamePadReading.dPadLeft) {
+            try {
+                driveControls.rotationPower = clamp(angle(270 - heading) * TOLERANCE);
+            } catch (Exception ignored) {}
+        }
         if (gamePadReading.leftBumper) {
             launcherControls.wheelPower = 1;
             if (launcher.getLeftWheelRPM() / Launcher.LAUNCHER_MAX_VELOCITY_RPM > SHOOTING_FRACTION) {
@@ -137,7 +175,7 @@ public class TeleOp extends OpMode {
                 launcherControls.rampPower = 1;
                 intakePower = 1;
             } else {
-                driveControls.translationXPower = -clamp(x * TOLERANCE);
+                driveControls.translationXPower = clamp(d * TOLERANCE);
             }
             ramp.run(launcherControls);
             launcher.run(launcherControls);
@@ -155,19 +193,31 @@ public class TeleOp extends OpMode {
         telemetry.update();
     }
 
-    private double getLocation() {
+    private double angle(double heading) {
+        while (heading >= 180) {
+            heading -= 360;
+        }
+        while (heading < -180) {
+            heading += 360;
+        }
+        return heading;
+    }
+
+    private double getLocation(boolean location) {
+        double min = 1000000;
         try {
             ArrayList<AprilTagDetection> currentDetections = aprilTag.getDetections();
             for (AprilTagDetection detection : currentDetections) {
-                if (detection.metadata == null) {
-                    continue;
-                }
-                if ((redID.contains(detection.metadata.id) && !color) || (blueID.contains(detection.metadata.id) && color)) {
-                    return detection.ftcPose.x;
+                if (detection.ftcPose != null) {
+                    min = Math.min(min, location ? detection.ftcPose.x : detection.ftcPose.yaw);
                 }
             }
         } catch (Exception ignored) {}
-        return 0;
+        if (min == 1000000) {
+            return 0;
+        } else {
+            return min;
+        }
     }
 
     public double clamp(double x) {
