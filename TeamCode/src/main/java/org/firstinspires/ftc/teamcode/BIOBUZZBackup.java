@@ -158,7 +158,7 @@ public class BIOBUZZBackup extends OpMode {
                     queue.add(new Task(0, 1500, Task.Type.TRANSLATE, 0, 0.5));
                     queue.add(new Task(0, 1300, Task.Type.TRANSLATE, -0.5, 0));
                 } else {
-                    queue.add(new Task(0, 100, Task.Type.TRANSLATE, 0, 0.5));
+                    queue.add(new Task(0, 500, Task.Type.TRANSLATE, 0.5, 0));
                 }
                 break;
 
@@ -174,15 +174,20 @@ public class BIOBUZZBackup extends OpMode {
 
             case LaunchAndPark:
                 if (HiveSide) {
-                    queue.add(new Task(0, 6000, Task.Type.LAUNCH, 0.9, 3000)); //Power and spin-up time
-                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, -0.5, 0.5));
-                    queue.add(new Task(0, 1500, Task.Type.TRANSLATE, 0, 0.5));
+                    queue.add(new Task(0, 6500, Task.Type.LAUNCH, 0.9, 3500)); //Power and spin-up time
+                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, -0.5, 0.1));
+                    queue.add(new Task(0, 2100, Task.Type.TRANSLATE, 0, 0.5));
                     queue.add(new Task(0, 1300, Task.Type.TRANSLATE, -0.5, 0));
                 } else {
-                    queue.add(new Task(0, 1500, Task.Type.TRANSLATE, 0, 1));
-                    queue.add(new Task(0, 1000, Task.Type.ROTATE, -0.75, 0)); //Motor power
-                    queue.add(new Task(0, 10000, Task.Type.LAUNCH, 0, 5));
-                    queue.add(new Task(0, 4000, Task.Type.TRANSLATE, 0.9, 0.75));
+                    queue.add(new Task(0, 500, Task.Type.TRANSLATE, 0, 0.5));
+                    queue.add(new Task(0, 1800, Task.Type.TRANSLATE, 0.75, 0)); //Motor power
+                    queue.add(new Task(0, 500, Task.Type.TRANSLATE, 0, 0.5));
+                    queue.add(new Task(0, 600, Task.Type.ROTATE, -90, 0));
+                    queue.add(new Task(0, 800, Task.Type.TRANSLATE, 0, -0.5));
+                    queue.add(new Task(0, 6500, Task.Type.LAUNCH, 0.9, 3500));
+                    queue.add(new Task(0, 1000, Task.Type.TRANSLATE, -0.5, 0.1));
+                    queue.add(new Task(0, 2100, Task.Type.TRANSLATE, 0, 0.5));
+                    queue.add(new Task(0, 1300, Task.Type.TRANSLATE, -0.5, 0));
                 }
                 break;
 
