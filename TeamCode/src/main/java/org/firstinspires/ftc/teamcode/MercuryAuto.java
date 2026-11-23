@@ -146,7 +146,7 @@ public class MercuryAuto extends OpMode {
     @Override
     public void start() {
         if (autoMode == null) {
-            autoMode = MercuryAuto.AutoMode.Park;
+            autoMode = MercuryAuto.AutoMode.Leave;
         }
         
         switch (autoMode) {
