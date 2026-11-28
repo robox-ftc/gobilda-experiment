@@ -20,8 +20,8 @@ import java.util.*;
 @Autonomous(name = "HiveKnightAuto-Mercury", group = "Robot")
 public class MercuryAuto extends OpMode {
     private static final double MAX_POWER = 1;
-    private static final double MIN_POWER = 0.05;
-    private static final double driveP = 0.08;
+    private static final double MIN_POWER = 0.1;
+    private static final double driveP = 0.06;
     private static final double rotP = 0.08;
     private static final double DriveTolerance = 3;
     private static final double RotationTolerance = 3;
@@ -156,10 +156,10 @@ public class MercuryAuto extends OpMode {
 
             case Park:
                 if (HiveSide) {
-                    queue.add(new Task2(2000, Task2.Type.TRANSLATE, -12, 12));
+                    queue.add(new Task2(2000, Task2.Type.TRANSLATE, -12, 12)); //
                     queue.add(new Task2(4000, Task2.Type.TRANSLATE, -36, 76));
                 } else {
-                    queue.add(new Task2(2000, Task2.Type.TRANSLATE, 12, 0));
+                    queue.add(new Task2(2000, Task2.Type.TRANSLATE, 0, 24));
                 }
                 break;
 
@@ -208,45 +208,88 @@ public class MercuryAuto extends OpMode {
             }
             switch (task2.type) {
             case TRANSLATE:
-            double xTarget = task2.FieldX;
-            double yTarget = task2.FieldY;
-            double xError = xTarget - x;
-            double yError = yTarget - y;
-            double distance = Math.hypot(xError, yError);
-            double headingRad = Math.toRadians(heading);
-            double sinHeading = Math.sin(headingRad);
-            double cosHeading = Math.cos(headingRad);
-                double robotStrafeError = -xError * sinHeading + yError * cosHeading;
-                double robotForwardError = xError * cosHeading + yError * sinHeading;
+//            double xTarget = task2.FieldX;
+//            double yTarget = task2.FieldY;
+//            double xError = xTarget - x;
+//            double yError = yTarget - y;
+//            double distance = Math.hypot(xError, yError);
+//            double headingRad = Math.toRadians(heading);
+//            double sinHeading = Math.sin(headingRad);
+//            double cosHeading = Math.cos(headingRad);
+//                double robotStrafeError = -xError * sinHeading + yError * cosHeading;
+//                double robotForwardError = xError * cosHeading + yError * sinHeading;
+//
+//            if (distance < DriveTolerance || timer.milliseconds() > task2.end) {
+//                controls.translationXPower = 0;
+//                controls.translationYPower = 0;
+//                controls.rotationPower = 0;
+//                if (intake != null) {
+//                    intake.spin(0);
+//                }
+//                queue.remove();
+//                TaskStarted = false;
+//            }
+//            else {
+//                telemetry.addData("robotStrafeError", robotStrafeError);
+//                telemetry.addData("robotForwardError", robotForwardError);
+//                controls.translationXPower = translationPower(robotStrafeError);
+//                controls.translationYPower = translationPower(robotForwardError);
+//                if (intake != null) {
+//                    intake.spin(1);
+//                }
+//            }
+//            telemetry.addData("X Target", xTarget); //Unnecessary information, only used for debugging
+//            telemetry.addData("Y Target", yTarget);
+//            telemetry.addData("Heading", heading);
+//            telemetry.addData("X Error", xError);
+//            telemetry.addData("Y Error", yError);
+//            telemetry.addData("Distance Remaining", distance);
+//            telemetry.addData("X Power", controls.translationXPower);
+//            telemetry.addData("Y Power", controls.translationYPower);
+//            telemetry.addData("Task Started", TaskStarted);
+                double xTarget = task2.FieldX;
+                double yTarget = task2.FieldY;
 
-            if (distance < DriveTolerance || timer.milliseconds() > task2.end) {
-                controls.translationXPower = 0;
-                controls.translationYPower = 0;
-                controls.rotationPower = 0;
-                if (intake != null) {
-                    intake.spin(0);
+                double xError = xTarget - x;
+                double yError = yTarget - y;
+
+                double distance = Math.hypot(xError, yError);
+
+                double headingRad = Math.toRadians(heading);
+                double sinHeading = Math.sin(headingRad);
+                double cosHeading = Math.cos(headingRad);
+
+                double robotStrafeError =
+                        -xError * sinHeading + yError * cosHeading;
+
+                double robotForwardError =
+                        xError * cosHeading + yError * sinHeading;
+
+                if (distance < DriveTolerance || timer.milliseconds() > task2.end) {
+                    controls.translationXPower = 0;
+                    controls.translationYPower = 0;
+                    controls.rotationPower = 0;
+
+                    if (intake != null) intake.spin(0);
+
+                    queue.remove();
+                    TaskStarted = false;
+                } else {
+                    // Calculate proportional movement power
+                    double movementPower = Math.min(MAX_POWER, distance * driveP);
+
+                    // Prevent excessively small motor commands
+                    movementPower = Math.max(0.12, movementPower);
+
+                    // Normalize direction
+                    controls.translationXPower =
+                            movementPower * robotStrafeError / distance;
+
+                    controls.translationYPower =
+                            movementPower * robotForwardError / distance;
+
+                    if (intake != null) intake.spin(1);
                 }
-                queue.remove();
-                TaskStarted = false;
-            }
-            else {
-                telemetry.addData("robotStrafeError", robotStrafeError);
-                telemetry.addData("robotForwardError", robotForwardError);
-                controls.translationXPower = translationPower(robotStrafeError);
-                controls.translationYPower = translationPower(robotForwardError);
-                if (intake != null) {
-                    intake.spin(1);
-                }
-            }
-            telemetry.addData("X Target", xTarget); //Unnecessary information, only used for debugging
-            telemetry.addData("Y Target", yTarget);
-            telemetry.addData("Heading", heading);
-            telemetry.addData("X Error", xError);
-            telemetry.addData("Y Error", yError);
-            telemetry.addData("Distance Remaining", distance);
-            telemetry.addData("X Power", controls.translationXPower);
-            telemetry.addData("Y Power", controls.translationYPower);
-            telemetry.addData("Task Started", TaskStarted);
             break;
         
         case ROTATE:
